@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#081726">
+  <title>Login | RB Site</title>
+  <link rel="icon" type="image/png" href="faicon.png">
+  <link rel="stylesheet" href="css/style.css?v=8">
+</head>
+<body>
+  <main class="login-shell">
+    <section class="login-layout">
+      <aside class="login-side">
+        <div class="brand-lockup">
+          <img src="rbsite-logo.png" alt="Logo RB Site" class="brand-logo login-side-logo">
+          <div>
+            <span class="eyebrow">RB Site Social Automation</span>
+            <strong class="brand-title">Painel administrativo</strong>
+          </div>
+        </div>
+
+        <h1 class="login-title">Controle toda a operacao social da RB Site em um unico lugar.</h1>
+        <p class="login-subtitle">
+          Entre para gerenciar geracao de conteudo, agenda, historico, artes premium e notificacoes do sistema com uma interface estruturada para operacao diaria.
+        </p>
+
+        <div class="login-points">
+          <article class="mini-card mini-card-soft">
+            <span class="section-kicker">Conteudo</span>
+            <strong>Posts e artes</strong>
+            <p>Gere textos e transforme o resultado em pecas premium para redes sociais.</p>
+          </article>
+
+          <article class="mini-card mini-card-soft">
+            <span class="section-kicker">Operacao</span>
+            <strong>Agenda e alertas</strong>
+            <p>Monitore publicacoes, historico e notificacoes no desktop e no Android.</p>
+          </article>
+        </div>
+
+        <a class="ghost-button nav-link" href="index.html">Voltar para a pagina inicial</a>
+      </aside>
+
+      <section class="login-box">
+        <div class="login-brand">
+          <img src="rbsite-logo.png" alt="Logo RB Site" class="login-logo">
+          <div class="login-brand-copy">
+            <span class="eyebrow">Acesso seguro</span>
+            <h2 class="login-box-title">Entrar no painel</h2>
+            <p class="login-box-subtitle">
+              Use suas credenciais administrativas para acessar o ambiente interno.
+            </p>
+          </div>
+        </div>
+
+        <div class="login-form">
+          <label class="field-label" for="email">Email</label>
+          <input class="field-input" type="email" id="email" placeholder="contato@rbsite.com.br" autocomplete="username">
+
+          <label class="field-label" for="senha">Senha</label>
+          <input class="field-input" type="password" id="senha" placeholder="Digite sua senha" autocomplete="current-password">
+
+          <button class="primary-button login-button" onclick="login()">Entrar</button>
+          <p id="login-status" class="login-status">Preencha email e senha para continuar.</p>
+        </div>
+      </section>
+    </section>
+  </main>
+  <script src="js/auth.js"></script>
+</body>
+</html>

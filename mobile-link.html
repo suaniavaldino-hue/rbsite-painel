@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parear Android | RB Site</title>
+  <meta name="theme-color" content="#081726">
+  <link rel="icon" type="image/png" href="faicon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="css/style.css?v=6">
+</head>
+<body>
+  <main class="dashboard-shell">
+    <section class="mobile-card">
+      <div class="mobile-copy">
+        <span class="section-kicker">Pareamento Android</span>
+        <h1>Conectar celular ao painel</h1>
+        <p class="hero-copy">
+          Ative as notificacoes push para receber alertas de posts, agenda e eventos do sistema direto no Android.
+        </p>
+
+        <label class="field-label" for="device-label">Nome do dispositivo</label>
+        <input id="device-label" class="field-input" type="text" value="Android RB Site" placeholder="Ex.: Galaxy S23 do comercial">
+
+        <div class="preferences-list">
+          <label class="preference-item"><input id="pref-posts" type="checkbox" checked> Receber alertas de novos posts</label>
+          <label class="preference-item"><input id="pref-agenda" type="checkbox" checked> Receber alertas de agenda</label>
+          <label class="preference-item"><input id="pref-system" type="checkbox" checked> Receber alertas do sistema</label>
+        </div>
+
+        <div class="mobile-actions">
+          <button id="pair-device-button" type="button" class="primary-button">
+            Ativar notificacoes
+          </button>
+        </div>
+
+        <div id="mobile-link-status" class="mobile-status">
+          Validando token de pareamento...
+        </div>
+      </div>
+
+      <div class="mobile-qr-panel">
+        <div class="qr-shell">
+          <div class="qr-placeholder">
+            Este link veio do QR Code seguro do painel. Toque no botao para concluir o pareamento.
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/api.js?v=6"></script>
+  <script src="js/mobile-link.js?v=6"></script>
+</body>
+</html>

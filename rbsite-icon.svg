@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">RB Site</title>
+  <desc id="desc">Icone do painel RB Site Social Automation.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#081726" />
+      <stop offset="100%" stop-color="#0f2e46" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#fe770b" />
+      <stop offset="100%" stop-color="#ff9a3d" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="136" fill="url(#bg)" />
+  <circle cx="256" cy="256" r="168" fill="rgba(255,255,255,0.08)" />
+  <path d="M140 172h138c56 0 92 31 92 80 0 38-22 62-57 71l78 97H314l-67-87h-31v87h-76V172zm76 104h54c17 0 29-9 29-24 0-15-12-24-29-24h-54v48z" fill="#ffffff"/>
+  <path d="M140 376h116c63 0 100-29 100-78 0-18-5-34-15-46-15 18-40 29-71 29h-54v95h-76z" fill="url(#accent)" opacity="0.92"/>
+</svg>

@@ -1,0 +1,33 @@
+:root {
+  --background: #081726;
+  --foreground: #f8fafc;
+  --muted: #10253d;
+  --muted-foreground: #a7b4c3;
+  --card: rgb(10 23 38 / 0.8);
+  --card-foreground: #f8fafc;
+  --border: rgb(255 255 255 / 0.08);
+  --primary: #f08129;
+  --primary-foreground: #111827;
+  --secondary: #162a41;
+  --secondary-foreground: #e2e8f0;
+  --accent: #f5a25a;
+  --accent-foreground: #111827;
+  --ring: rgb(240 129 41 / 0.45);
+  --radius-card: 2rem;
+  --shadow-premium: 0 24px 80px rgb(2 6 23 / 0.45);
+}
+
+.surface-card {
+  border: 1px solid rgb(255 255 255 / 0.1);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.03)),
+    rgb(6 11 22 / 0.58);
+  box-shadow: var(--shadow-premium);
+  backdrop-filter: blur(18px);
+}
+
+.hero-glow {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(110px);
+}

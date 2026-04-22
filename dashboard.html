@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard RB Site</title>
+  <meta name="theme-color" content="#081726">
+  <link rel="icon" type="image/png" href="faicon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="css/style.css?v=6">
+</head>
+<body>
+  <main class="dashboard-shell">
+    <section class="hero-card">
+      <div class="hero-copy-block">
+        <span class="eyebrow">RB Site Social Automation</span>
+        <h1>Dashboard RB Site</h1>
+        <p class="hero-copy">
+          Gere posts, acompanhe o historico salvo no Supabase e pareie seu Android com QR Code para receber alertas seguros de post, agenda e eventos do sistema.
+        </p>
+      </div>
+
+      <div class="hero-actions">
+        <label class="field-label" for="tema-input">Tema do post</label>
+        <input id="tema-input" class="field-input" type="text" value="site profissional" placeholder="Digite um tema">
+        <button id="gerar-post-button" type="button" class="primary-button" onclick="gerarPost()">
+          Gerar Post
+        </button>
+      </div>
+    </section>
+
+    <section class="stats-grid">
+      <article class="stat-card">
+        <span class="stat-label">Total carregado</span>
+        <strong id="stat-total" class="stat-value">0</strong>
+        <span class="stat-caption">Posts retornados pelos filtros atuais</span>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-label">Em rascunho</span>
+        <strong id="stat-draft" class="stat-value">0</strong>
+        <span class="stat-caption">Conteudos ainda nao publicados</span>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-label">Com data</span>
+        <strong id="stat-dated" class="stat-value">0</strong>
+        <span class="stat-caption">Posts com created_at preenchido</span>
+      </article>
+
+      <article class="stat-card">
+        <span class="stat-label">Ultima atividade</span>
+        <strong id="stat-latest" class="stat-value stat-value-small">Sem data</strong>
+        <span class="stat-caption">Data mais recente do resultado atual</span>
+      </article>
+    </section>
+
+    <section class="mobile-card">
+      <div class="mobile-copy">
+        <span class="section-kicker">Android Seguro</span>
+        <h2>Pareie o celular com QR Code</h2>
+        <p class="hero-copy">
+          Escaneie o QR no Android, permita notificacoes e receba alertas de post, agenda e eventos do painel sem expor segredos no frontend.
+        </p>
+
+        <div class="mobile-actions">
+          <button type="button" class="primary-button" onclick="gerarPareamentoMobile()">
+            Gerar QR Seguro
+          </button>
+          <label class="filter-field compact-field" for="notification-kind">
+            <span>Teste no celular</span>
+            <select id="notification-kind" class="field-input">
+              <option value="posts">Novo post</option>
+              <option value="agenda">Agenda</option>
+              <option value="system">Sistema</option>
+            </select>
+          </label>
+          <button type="button" class="secondary-button" onclick="enviarTesteNotificacao()">
+            Enviar teste
+          </button>
+        </div>
+
+        <div id="mobile-status" class="mobile-status">
+          Verificando configuracao de notificacoes...
+        </div>
+      </div>
+
+      <div class="mobile-qr-panel">
+        <div id="qr-shell" class="qr-shell">
+          QR Code aguardando geracao.
+        </div>
+        <a id="pairing-link" class="pairing-link hidden" href="#" target="_blank" rel="noreferrer">
+          Abrir link de pareamento no celular
+        </a>
+      </div>
+    </section>
+
+    <section class="panel-card">
+      <div class="section-head section-head-inline">
+        <div>
+          <span class="section-kicker">Dispositivos</span>
+          <h2>Celulares conectados</h2>
+        </div>
+
+        <button type="button" class="secondary-button" onclick="carregarDispositivosMobile()">
+          Atualizar dispositivos
+        </button>
+      </div>
+
+      <div id="devices-status" class="history-status">
+        Carregando dispositivos...
+      </div>
+
+      <div id="devices-grid" class="devices-grid"></div>
+    </section>
+
+    <section class="panel-card">
+      <div class="section-head">
+        <div>
+          <span class="section-kicker">Geracao atual</span>
+          <h2>Ultimo resultado</h2>
+        </div>
+      </div>
+
+      <div id="resultado" class="result-state info-state">
+        Clique em <strong>Gerar Post</strong> para criar um novo conteudo.
+      </div>
+    </section>
+
+    <section class="panel-card art-studio-card">
+      <div class="section-head section-head-inline">
+        <div>
+          <span class="section-kicker">Arte Premium</span>
+          <h2>Gerador visual do post</h2>
+          <p class="panel-copy">
+            Cria automaticamente uma arte com linguagem premium inspirada em produtos como Manus, mas adaptada a identidade visual da RB Site.
+          </p>
+        </div>
+
+        <div class="art-export-actions">
+          <button type="button" class="secondary-button" onclick="gerarArteManual()">
+            Atualizar arte
+          </button>
+          <button type="button" class="secondary-button" onclick="baixarArteSvg()">
+            Baixar SVG
+          </button>
+          <button type="button" class="primary-button" onclick="baixarArtePng()">
+            Baixar PNG
+          </button>
+        </div>
+      </div>
+
+      <div class="art-studio-grid">
+        <div class="art-controls-card">
+          <label class="filter-field">
+            <span>Formato</span>
+            <select id="art-format" class="field-input">
+              <option value="square">Instagram 1:1</option>
+              <option value="portrait">Feed 4:5</option>
+              <option value="story">Story / Reels 9:16</option>
+            </select>
+          </label>
+
+          <label class="filter-field">
+            <span>Estilo</span>
+            <select id="art-style" class="field-input">
+              <option value="editorial">Editorial Premium</option>
+              <option value="midnight">Midnight Contrast</option>
+              <option value="showcase">Showcase Minimal</option>
+            </select>
+          </label>
+
+          <label class="filter-field">
+            <span>CTA da arte</span>
+            <input id="art-cta" class="field-input" type="text" value="Fale com a RB Site" placeholder="Ex.: Solicite um site estrategico">
+          </label>
+
+          <div class="art-notes-card">
+            <span class="section-kicker">Direcao visual</span>
+            <p>
+              A arte usa titulo forte, subtitulo limpo, glow sutil, cards refinados e composicao com cara de software premium.
+            </p>
+          </div>
+        </div>
+
+        <div class="art-preview-card">
+          <div class="art-preview-top">
+            <div>
+              <span class="section-kicker">Preview ao vivo</span>
+              <h3>Imagem do post</h3>
+            </div>
+            <span id="art-dimensions" class="art-dimensions">1080 x 1080</span>
+          </div>
+
+          <div id="art-preview-stage" class="art-preview-stage">
+            <img id="art-preview-image" class="art-preview-image" alt="Preview da arte do post RB Site">
+          </div>
+
+          <div id="art-status" class="history-status">
+            Preparando a arte inicial...
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel-card">
+      <div class="section-head section-head-inline">
+        <div>
+          <span class="section-kicker">Historico</span>
+          <h2>Posts salvos no painel</h2>
+        </div>
+
+        <button type="button" class="secondary-button" onclick="carregarHistorico()">
+          Atualizar
+        </button>
+      </div>
+
+      <div class="filters-grid">
+        <label class="filter-field">
+          <span>Buscar</span>
+          <input id="search-input" class="field-input" type="text" placeholder="Titulo ou conteudo">
+        </label>
+
+        <label class="filter-field">
+          <span>Tipo</span>
+          <select id="type-filter" class="field-input">
+            <option value="post">Post</option>
+          </select>
+        </label>
+
+        <label class="filter-field">
+          <span>Status</span>
+          <select id="status-filter" class="field-input">
+            <option value="all">Todos</option>
+            <option value="draft">Draft</option>
+          </select>
+        </label>
+
+        <label class="filter-field">
+          <span>Ordenacao</span>
+          <select id="sort-filter" class="field-input">
+            <option value="newest">Mais recentes</option>
+            <option value="oldest">Mais antigos</option>
+          </select>
+        </label>
+      </div>
+
+      <div id="historico-status" class="history-status">
+        Carregando historico...
+      </div>
+
+      <div id="historico" class="history-grid"></div>
+    </section>
+  </main>
+
+  <script src="js/api.js?v=6"></script>
+  <script src="js/post-art.js?v=6"></script>
+  <script src="js/app.js?v=6"></script>
+</body>
+</html>

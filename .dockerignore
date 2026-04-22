@@ -1,0 +1,13 @@
+node_modules
+.next
+npm-debug.log*
+.git
+.gitignore
+.env
+.env.local
+.env.development
+.env.production
+.env.production.local
+tsconfig.tsbuildinfo
+coverage
+deploy/systemd

@@ -1,0 +1,22 @@
+[Unit]
+Description=RB Site Social Automation
+After=network.target
+
+[Service]
+Type=simple
+User=rbsite
+Group=rbsite
+WorkingDirectory=/var/www/rbsite-social-automation/current
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=127.0.0.1
+EnvironmentFile=/etc/rbsite-social-automation/painel.env
+ExecStart=/usr/bin/node .next/standalone/server.js
+Restart=always
+RestartSec=5
+TimeoutStartSec=30
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

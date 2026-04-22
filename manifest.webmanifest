@@ -1,0 +1,17 @@
+{
+  "name": "RB Site Social Automation",
+  "short_name": "RB Site",
+  "start_url": "/dashboard.html",
+  "display": "standalone",
+  "background_color": "#081726",
+  "theme_color": "#081726",
+  "description": "Painel da RB Site com geracao de posts, agenda e notificacoes seguras no Android.",
+  "icons": [
+    {
+      "src": "/faicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
