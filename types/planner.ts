@@ -2,6 +2,7 @@ import type {
   ContentFormat,
   FunnelStage,
   GeneratedContentDocument,
+  GenerationMode,
   SocialPlatform,
 } from "@/types/content-generation";
 import type {
@@ -90,6 +91,7 @@ export type PlannerGenerationRequest = {
   audience: string;
   funnelStage: FunnelStage;
   extraContext?: string;
+  providerMode?: GenerationMode;
   fallbackToMock?: boolean;
 };
 
