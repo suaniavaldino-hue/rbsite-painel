@@ -180,6 +180,14 @@ export async function requestPasswordResetAction(
       },
     });
 
+    if (token && delivery?.reason === "smtp_not_configured" && !showPreview) {
+      return {
+        status: "error",
+        message:
+          "O rbsite-painel ainda nao tem SMTP configurado no Vercel. Defina SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD e SMTP_FROM ou habilite temporariamente AUTH_SHOW_RESET_TOKEN_PREVIEW=true para concluir a redefinicao.",
+      };
+    }
+
     return {
       status: "success",
       message:
