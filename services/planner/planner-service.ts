@@ -191,6 +191,10 @@ export async function generatePlannerItems(
   const batchId = randomUUID();
   const createdItems: PlannerItem[] = [];
   let lastScheduledDate: Date | undefined;
+  const shouldAllowMockFallback =
+    request.fallbackToMock ?? process.env.NODE_ENV !== "production";
+  const providerMode =
+    request.providerMode ?? (shouldAllowMockFallback ? "auto" : "live");
 
   for (const [index, theme] of themes.entries()) {
     const format = resolveFormatForIndex(request, index);
@@ -206,8 +210,8 @@ export async function generatePlannerItems(
       extraContext:
         request.extraContext ??
         `${BRAND.positioning} Gere tambem titulo, descricao, tags, arte premium e janela ideal de postagem.`,
-      mode: "auto",
-      fallbackToMock: request.fallbackToMock ?? true,
+      mode: providerMode,
+      fallbackToMock: shouldAllowMockFallback,
     });
 
     const suggestion =
@@ -222,7 +226,7 @@ export async function generatePlannerItems(
         audience: request.audience,
         funnelStage: request.funnelStage,
         extraContext: request.extraContext,
-        fallbackToMock: request.fallbackToMock ?? true,
+        fallbackToMock: shouldAllowMockFallback,
       });
     const scheduledDate = ensureAscendingSchedule(
       suggestion.isoDateTime,
