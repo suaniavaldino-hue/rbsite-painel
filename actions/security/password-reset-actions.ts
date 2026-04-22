@@ -1,10 +1,7 @@
 "use server";
 
-import nodemailer from "nodemailer";
-
 import { logAuditEvent } from "@/lib/security/audit";
 import { updateAdminPassword } from "@/lib/security/admin-account";
-import { env } from "@/lib/utils/env";
 import {
   consumePasswordResetToken,
   createPasswordResetToken,
@@ -12,6 +9,11 @@ import {
 } from "@/lib/security/password-reset";
 import { sanitizeEmail, sanitizePlainText } from "@/lib/security/sanitize";
 import { requirePublicServerAction } from "@/lib/security/server-actions";
+import { env } from "@/lib/utils/env";
+import {
+  isSmtpConfigured,
+  sendTransactionalEmail,
+} from "@/services/email/smtp-service";
 
 export type PasswordResetActionState = {
   status: "idle" | "success" | "error";
@@ -43,46 +45,17 @@ function shouldShowResetPreview() {
   );
 }
 
-function getSmtpConfig() {
-  const host = process.env.SMTP_HOST?.trim();
-  const port = Number(process.env.SMTP_PORT ?? "587");
-  const user = process.env.SMTP_USER?.trim();
-  const pass = process.env.SMTP_PASSWORD?.trim();
-  const from = process.env.SMTP_FROM?.trim();
-
-  if (!host || !port || !from) {
-    return null;
-  }
-
-  return {
-    host,
-    port,
-    secure: process.env.SMTP_SECURE === "true" || port === 465,
-    auth: user && pass ? { user, pass } : undefined,
-    from,
-  };
-}
-
 async function sendPasswordResetEmail(input: {
   email: string;
   resetUrl: string;
   expiresAt: string;
 }) {
-  const smtp = getSmtpConfig();
-
-  if (!smtp) {
+  if (!isSmtpConfigured()) {
     return {
       delivered: false,
       reason: "smtp_not_configured" as const,
     };
   }
-
-  const transporter = nodemailer.createTransport({
-    host: smtp.host,
-    port: smtp.port,
-    secure: smtp.secure,
-    auth: smtp.auth,
-  });
 
   const expirationLabel = new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
@@ -90,8 +63,7 @@ async function sendPasswordResetEmail(input: {
     timeZone: env.timezone,
   }).format(new Date(input.expiresAt));
 
-  await transporter.sendMail({
-    from: smtp.from,
+  await sendTransactionalEmail({
     to: input.email,
     subject: "Redefinicao de senha do painel RB Site",
     text: [
@@ -194,7 +166,8 @@ export async function requestPasswordResetAction(
         token && delivery?.delivered
           ? "Se o email existir como administrador, um link de recuperacao foi enviado com validade limitada."
           : "Se o email existir como administrador, um link de recuperacao foi preparado com validade limitada.",
-      previewUrl: showPreview && token ? previewUrl : undefined,
+      previewUrl:
+        showPreview && token && !delivery?.delivered ? previewUrl : undefined,
     };
   } catch (error) {
     return {
