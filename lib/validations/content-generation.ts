@@ -51,6 +51,10 @@ function ensureEnum<T extends string>(
   return value as T;
 }
 
+function resolveDefaultFallbackToMock() {
+  return process.env.NODE_ENV !== "production";
+}
+
 export function parseContentGenerationRequest(
   payload: unknown,
 ): ContentGenerationRequest {
@@ -79,6 +83,8 @@ export function parseContentGenerationRequest(
     extraContext: sanitizeOptionalText(data.extraContext, 1200),
     mode,
     fallbackToMock:
-      typeof data.fallbackToMock === "boolean" ? data.fallbackToMock : true,
+      typeof data.fallbackToMock === "boolean"
+        ? data.fallbackToMock
+        : resolveDefaultFallbackToMock(),
   };
 }
