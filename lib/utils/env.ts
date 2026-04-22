@@ -3,8 +3,13 @@ function normalizeRuntimeUrl(value?: string) {
   return normalized ? normalized : undefined;
 }
 
+function normalizeRuntimeHost(value?: string) {
+  const normalized = value?.trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+  return normalized ? normalized : undefined;
+}
+
 function buildHttpsUrlFromHost(host?: string) {
-  const normalizedHost = host?.trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const normalizedHost = normalizeRuntimeHost(host);
 
   if (!normalizedHost) {
     return undefined;
@@ -23,9 +28,9 @@ function resolveAppUrl() {
   }
 
   const vercelRuntimeUrl =
-    buildHttpsUrlFromHost(process.env.VERCEL_URL) ??
+    buildHttpsUrlFromHost(process.env.VERCEL_PROJECT_PRODUCTION_URL) ??
     buildHttpsUrlFromHost(process.env.VERCEL_BRANCH_URL) ??
-    buildHttpsUrlFromHost(process.env.VERCEL_PROJECT_PRODUCTION_URL);
+    buildHttpsUrlFromHost(process.env.VERCEL_URL);
 
   if (vercelRuntimeUrl) {
     return vercelRuntimeUrl;
@@ -35,15 +40,16 @@ function resolveAppUrl() {
 }
 
 function resolveCanonicalHost() {
-  const explicitHost = process.env.APP_CANONICAL_HOST?.trim();
+  const explicitHost = normalizeRuntimeHost(process.env.APP_CANONICAL_HOST);
 
   if (explicitHost) {
-    return explicitHost.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    return explicitHost;
   }
 
   return (
-    process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim() ||
-    process.env.VERCEL_URL?.trim() ||
+    normalizeRuntimeHost(process.env.VERCEL_PROJECT_PRODUCTION_URL) ??
+    normalizeRuntimeHost(process.env.VERCEL_BRANCH_URL) ??
+    normalizeRuntimeHost(process.env.VERCEL_URL) ??
     "painel.rbsite.com.br"
   );
 }
