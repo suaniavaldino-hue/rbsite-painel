@@ -2,13 +2,15 @@ import "server-only";
 
 import { randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 
-import nodemailer from "nodemailer";
-
 import { DEFAULT_EMAIL_LOGIN_TTL_MINUTES } from "@/lib/security/constants";
 import { hashOpaqueToken, signValue } from "@/lib/security/crypto";
 import { logAuditEvent } from "@/lib/security/audit";
 import { sanitizeEmail } from "@/lib/security/sanitize";
 import { env } from "@/lib/utils/env";
+import {
+  isSmtpConfigured,
+  sendTransactionalEmail,
+} from "@/services/email/smtp-service";
 
 type EmailChallengePayload = {
   id: string;
@@ -39,26 +41,6 @@ function shouldShowEmailLoginPreview() {
 
 function generateEmailLoginCode() {
   return String(randomInt(100000, 999999));
-}
-
-function getSmtpConfig() {
-  const host = process.env.SMTP_HOST?.trim();
-  const port = Number(process.env.SMTP_PORT ?? "587");
-  const user = process.env.SMTP_USER?.trim();
-  const pass = process.env.SMTP_PASSWORD?.trim();
-  const from = process.env.SMTP_FROM?.trim();
-
-  if (!host || !port || !from) {
-    return null;
-  }
-
-  return {
-    host,
-    port,
-    secure: process.env.SMTP_SECURE === "true" || port === 465,
-    auth: user && pass ? { user, pass } : undefined,
-    from,
-  };
 }
 
 function encodePayload(payload: EmailChallengePayload) {
@@ -124,9 +106,7 @@ async function sendEmailLoginCodeEmail(input: {
   code: string;
   expiresAt: string;
 }) {
-  const smtp = getSmtpConfig();
-
-  if (!smtp) {
+  if (!isSmtpConfigured()) {
     if (shouldShowEmailLoginPreview()) {
       return {
         delivered: false,
@@ -135,16 +115,9 @@ async function sendEmailLoginCodeEmail(input: {
     }
 
     throw new Error(
-      "SMTP_HOST, SMTP_PORT and SMTP_FROM must be configured to send the login code by email.",
+      "SMTP_HOST, SMTP_PORT e SMTP_FROM precisam estar configurados para enviar o codigo de login por email.",
     );
   }
-
-  const transporter = nodemailer.createTransport({
-    host: smtp.host,
-    port: smtp.port,
-    secure: smtp.secure,
-    auth: smtp.auth,
-  });
 
   const expirationLabel = new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
@@ -152,8 +125,7 @@ async function sendEmailLoginCodeEmail(input: {
     timeZone: env.timezone,
   }).format(new Date(input.expiresAt));
 
-  await transporter.sendMail({
-    from: smtp.from,
+  await sendTransactionalEmail({
     to: input.email,
     subject: "Codigo de confirmacao do painel RB Site",
     text: [
