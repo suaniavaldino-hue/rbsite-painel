@@ -34,6 +34,30 @@ function formatAuditEvent(event: string) {
   return event.replaceAll(".", " / ");
 }
 
+function formatProviderName(value: string) {
+  if (value === "openai") {
+    return "OpenAI";
+  }
+
+  if (value === "gemini") {
+    return "Gemini";
+  }
+
+  if (value === "stability") {
+    return "Stability";
+  }
+
+  if (value === "canva") {
+    return "Canva";
+  }
+
+  if (value === "mock") {
+    return "Mock local";
+  }
+
+  return value;
+}
+
 export function DashboardOverview({
   initialContents,
   recentAuditLogs,
@@ -94,7 +118,8 @@ export function DashboardOverview({
           funnelStage: "middle",
           extraContext:
             "Layout premium, linguagem forte, foco em conversao e identidade visual da RB Site.",
-          fallbackToMock: true,
+          mode: "live",
+          fallbackToMock: false,
         }),
       });
 
@@ -105,34 +130,55 @@ export function DashboardOverview({
         return;
       }
 
+      const textProvider = formatProviderName(
+        result.data.creative.meta.textProvider,
+      );
+      const imageProvider = formatProviderName(
+        result.data.creative.meta.imageProvider,
+      );
+
       setLatestCreative(result.data.creative);
       setContents((currentItems) => [result.data!.record, ...currentItems]);
       setFeedback(
-        "Conteudo gerado e salvo com sucesso na base central do painel.",
+        result.data.creative.meta.usedMockFallback
+          ? "Conteudo salvo, mas uma etapa ainda caiu em fallback local. Revise as integracoes antes de publicar."
+          : `Conteudo gerado em modo live via ${textProvider} + ${imageProvider} e salvo na base central do painel.`,
       );
     });
   }
 
   return (
     <div className="grid gap-6">
-      <section className="surface-card rounded-[34px] p-6 md:p-8">
+      <section className="surface-card rounded-[34px] p-6 md:p-8 lg:p-9">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
+          <div className="max-w-[50rem]">
             <span className="inline-flex rounded-full border border-amber-300/20 bg-amber-300/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.32em] text-amber-200">
               Multi-IA RB Site
             </span>
-            <h1 className="mt-5 font-display text-3xl font-semibold tracking-[-0.05em] text-white md:text-4xl">
-              Gere texto, imagem e agenda editorial em um painel com cara de
-              SaaS premium.
+            <h1 className="mt-5 max-w-4xl font-display text-[2rem] font-semibold tracking-[-0.05em] text-white md:text-[2.8rem] md:leading-[1.02]">
+              Gere texto, imagem e agenda editorial em um painel premium sem
+              esconder erro real atras de mock silencioso.
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-300">
-              A arquitetura agora centraliza persistencia, prepara multiplos
-              provedores de IA e entrega uma superficie mais profissional para
-              operacao diaria da RB Site.
+            <p className="mt-5 max-w-3xl text-[15px] leading-7 text-slate-300 md:text-base md:leading-8">
+              A superficie agora fica mais limpa, mais larga e pronta para operar
+              com OpenAI, Gemini, Stability, Canva e Meta com diagnostico claro
+              quando alguma integracao nao responder em producao.
             </p>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                Modo live obrigatorio
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                Fallback mock desativado
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                Planner e dashboard alinhados
+              </span>
+            </div>
           </div>
 
-          <div className="grid gap-3 rounded-[28px] border border-white/10 bg-slate-950/40 p-4 md:min-w-[24rem]">
+          <div className="grid w-full max-w-[28rem] gap-3 rounded-[28px] border border-white/10 bg-slate-950/40 p-4 md:p-5">
             <label className="grid gap-2">
               <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
                 Tema rapido
@@ -195,6 +241,11 @@ export function DashboardOverview({
                 Gerar em massa
               </Link>
             </div>
+
+            <p className="text-xs leading-6 text-slate-400">
+              Se OpenAI, Gemini ou Stability falharem, o painel agora retorna o
+              erro real em vez de mascarar a operacao com conteudo mock.
+            </p>
           </div>
         </div>
       </section>
@@ -226,7 +277,7 @@ export function DashboardOverview({
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">
               {card.label}
             </p>
-            <p className="mt-4 font-display text-4xl font-semibold tracking-[-0.04em] text-white">
+            <p className="mt-4 font-display text-[2.35rem] font-semibold tracking-[-0.04em] text-white md:text-[2.7rem]">
               {card.value}
             </p>
             <p className="mt-3 text-sm leading-7 text-slate-300">{card.copy}</p>
@@ -252,14 +303,14 @@ export function DashboardOverview({
         pending={isPending}
       />
 
-      <section className="grid gap-6 xl:grid-cols-[1fr_0.34fr]">
-        <div className="rounded-[30px] border border-white/10 bg-white/[0.045] p-6">
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_320px] 2xl:grid-cols-[minmax(0,1.28fr)_340px]">
+        <div className="rounded-[30px] border border-white/10 bg-white/[0.045] p-6 lg:p-7">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">
                 Biblioteca viva
               </p>
-              <h2 className="mt-3 font-display text-3xl font-semibold tracking-[-0.04em] text-white">
+              <h2 className="mt-3 font-display text-[1.9rem] font-semibold tracking-[-0.04em] text-white md:text-[2.2rem]">
                 Conteudos persistidos
               </h2>
             </div>
