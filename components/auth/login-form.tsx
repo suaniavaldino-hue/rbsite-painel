@@ -44,6 +44,24 @@ function formatDate(value: string) {
   }).format(date);
 }
 
+async function readJsonResponse<T>(response: Response) {
+  const rawBody = await response.text();
+
+  if (!rawBody) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawBody) as T;
+  } catch {
+    throw new Error(
+      response.ok
+        ? "O servidor respondeu em formato invalido."
+        : `O servidor retornou uma resposta invalida (${response.status}).`,
+    );
+  }
+}
+
 export function LoginForm({ callbackUrl, emailOtpEnabled }: LoginFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -69,12 +87,12 @@ export function LoginForm({ callbackUrl, emailOtpEnabled }: LoginFormProps) {
       }),
     });
 
-    const result = (await response.json()) as EmailChallengeResponse;
+    const result = await readJsonResponse<EmailChallengeResponse>(response);
 
-    if (!response.ok || !result.success || !result.data) {
+    if (!response.ok || !result?.success || !result.data) {
       throw new Error(
-        result.error ??
-          "Nao foi possivel enviar o codigo de confirmacao por email.",
+        result?.error ??
+          `Nao foi possivel enviar o codigo de confirmacao por email (${response.status}).`,
       );
     }
 
