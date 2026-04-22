@@ -37,14 +37,63 @@ function typeLabel(type: ContentRecord["type"]) {
   return "Post";
 }
 
+function normalizeProviderPart(value: string) {
+  const normalizedValue = value.trim().toLowerCase();
+
+  if (!normalizedValue || normalizedValue === "n/a") {
+    return null;
+  }
+
+  if (normalizedValue === "openai") {
+    return "OpenAI";
+  }
+
+  if (normalizedValue === "gemini") {
+    return "Gemini";
+  }
+
+  if (normalizedValue === "stability") {
+    return "Stability";
+  }
+
+  if (normalizedValue === "canva") {
+    return "Canva";
+  }
+
+  if (normalizedValue === "mock" || normalizedValue === "mockock") {
+    return "Mock local";
+  }
+
+  return value.trim();
+}
+
+function formatProviderLabel(provider?: string) {
+  if (!provider) {
+    return null;
+  }
+
+  const parts = provider
+    .split("/")
+    .map((entry) => normalizeProviderPart(entry))
+    .filter((entry): entry is string => Boolean(entry));
+
+  if (parts.length === 0) {
+    return null;
+  }
+
+  return parts.join(" + ");
+}
+
 type PostCardProps = {
   item: ContentRecord;
 };
 
 export function PostCard({ item }: PostCardProps) {
+  const providerLabel = formatProviderLabel(item.provider);
+
   return (
     <article className="overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.045] shadow-[0_18px_48px_rgb(2_6_23_/_0.22)]">
-      <div className="relative aspect-[1.12/1] border-b border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(254,119,11,0.22),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]">
+      <div className="relative aspect-[1.08/1] border-b border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(254,119,11,0.22),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.02))]">
         {item.imageUrl ? (
           <Image
             src={item.imageUrl}
@@ -56,7 +105,7 @@ export function PostCard({ item }: PostCardProps) {
           />
         ) : (
           <div className="absolute inset-0 flex items-end bg-[radial-gradient(circle_at_top_right,rgba(254,119,11,0.28),transparent_30%),linear-gradient(135deg,#0d1e31,#081726)] p-5">
-            <p className="max-w-[16rem] font-display text-2xl font-semibold tracking-[-0.03em] text-white">
+            <p className="max-w-[16rem] font-display text-xl font-semibold tracking-[-0.03em] text-white">
               {item.title}
             </p>
           </div>
@@ -82,7 +131,7 @@ export function PostCard({ item }: PostCardProps) {
           <span className="text-xs text-slate-500">{formatDate(item.createdAt)}</span>
         </div>
 
-        <h3 className="mt-4 font-display text-2xl font-semibold tracking-[-0.03em] text-white">
+        <h3 className="mt-4 font-display text-[1.55rem] font-semibold leading-[1.08] tracking-[-0.03em] text-white">
           {item.title}
         </h3>
 
@@ -99,9 +148,9 @@ export function PostCard({ item }: PostCardProps) {
             </span>
           ) : null}
 
-          {item.provider ? (
+          {providerLabel ? (
             <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-              {item.provider}
+              {providerLabel}
             </span>
           ) : null}
         </div>
