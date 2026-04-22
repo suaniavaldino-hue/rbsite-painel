@@ -7,7 +7,23 @@ export const dynamic = "force-dynamic";
 
 export default function IntegrationsPage() {
   const supabaseStatus = getSupabaseConfigurationStatus();
-  const aiCards = [
+  const providerCards = [
+    {
+      id: "smtp",
+      title: "Email SMTP",
+      description:
+        "Valida o envio real de login OTP e recuperacao de senha sem expor previews quando a entrega estiver funcionando.",
+      value: maskSecret(process.env.SMTP_FROM?.trim() || process.env.SMTP_HOST?.trim(), 6, 10),
+      configured: Boolean(
+        process.env.SMTP_HOST?.trim() &&
+          process.env.SMTP_PORT?.trim() &&
+          process.env.SMTP_FROM?.trim(),
+      ),
+      endpoint: "/api/integrations/email",
+      method: "POST" as const,
+      actionLabel: "Enviar email teste",
+      metadata: `Preview OTP: ${process.env.AUTH_EMAIL_OTP_PREVIEW === "true" ? "ativo" : "desligado"} | Preview reset: ${process.env.AUTH_SHOW_RESET_TOKEN_PREVIEW === "true" ? "ativo" : "desligado"}`,
+    },
     {
       id: "openai",
       title: "OpenAI",
@@ -17,18 +33,29 @@ export default function IntegrationsPage() {
       configured: Boolean(process.env.OPENAI_API_KEY?.trim()),
       endpoint: "/api/integrations/openai",
       autoTest: true,
-      metadata: `Modelo alvo: ${process.env.OPENAI_CONTENT_MODEL ?? "gpt-5.4-mini"}`,
+      metadata: `Modelo alvo: ${process.env.OPENAI_CONTENT_MODEL ?? "gpt-5.4-mini"} | Modo: ${process.env.OPENAI_GENERATION_MODE ?? "auto"}`,
     },
     {
       id: "gemini",
       title: "Google Gemini",
       description:
-        "Fallback de texto e camada multimodal para cenarios alternativos e futuras entradas com imagem.",
+        "Fallback textual e camada multimodal para cenarios alternativos e futuras entradas com imagem.",
       value: maskSecret(process.env.GEMINI_API_KEY),
       configured: Boolean(process.env.GEMINI_API_KEY?.trim()),
       endpoint: "/api/integrations/gemini",
       autoTest: true,
       metadata: `Modelo alvo: ${process.env.GEMINI_MODEL ?? "gemini-2.5-flash"}`,
+    },
+    {
+      id: "meta",
+      title: "Meta Graph API",
+      description:
+        "Valida token, Facebook Page ID e Instagram Business ID em execucao real para publicacao e agendamento.",
+      value: maskSecret(process.env.META_GRAPH_API_TOKEN),
+      configured: Boolean(process.env.META_GRAPH_API_TOKEN?.trim()),
+      endpoint: "/api/integrations/meta",
+      autoTest: true,
+      metadata: `Versao: ${process.env.META_GRAPH_API_VERSION ?? "v25.0"} | Page ID: ${maskSecret(process.env.META_FACEBOOK_PAGE_ID, 4, 4)} | IG Business ID: ${maskSecret(process.env.META_INSTAGRAM_BUSINESS_ID, 4, 4)}`,
     },
     {
       id: "stability",
@@ -60,21 +87,21 @@ export default function IntegrationsPage() {
 
   return (
     <div className="grid gap-6">
-      <section className="surface-card rounded-[32px] p-6 md:p-8">
+      <section className="surface-card rounded-[32px] p-6 md:p-8 lg:p-9">
         <span className="inline-flex rounded-full border border-emerald-300/18 bg-emerald-300/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em] text-emerald-200">
           Integracoes seguras
         </span>
-        <h1 className="mt-5 font-display text-3xl font-semibold tracking-[-0.05em] text-white md:text-4xl">
-          Central multi-IA e infraestrutura protegida.
+        <h1 className="mt-5 max-w-4xl font-display text-[2rem] font-semibold tracking-[-0.05em] text-white md:text-[2.75rem] md:leading-[1.02]">
+          Centro operacional para validar IA, email real e Meta sem sair do painel.
         </h1>
-        <p className="mt-5 max-w-3xl text-base leading-8 text-slate-300">
-          As credenciais continuam isoladas do frontend, mas agora a tela
-          tambem expõe a saude operacional das integracoes que sustentam o
-          gerador de conteudo premium da RB Site.
+        <p className="mt-5 max-w-3xl text-[15px] leading-7 text-slate-300 md:text-base md:leading-8">
+          As credenciais continuam isoladas do frontend, e agora a tela tambem
+          diferencia o que esta apenas configurado do que realmente respondeu em
+          execucao no ambiente publicado.
         </p>
       </section>
 
-      <IntegrationHealthBoard cards={aiCards} />
+      <IntegrationHealthBoard cards={providerCards} />
 
       <section className="grid gap-4 xl:grid-cols-3">
         <SecretStatusCard
@@ -92,23 +119,29 @@ export default function IntegrationsPage() {
         />
 
         <SecretStatusCard
-          title="Meta Graph API Token"
-          description="Usado apenas no servidor para testes de conexao, agendamento e publicacao."
-          value={maskSecret(process.env.META_GRAPH_API_TOKEN)}
-          configured={Boolean(process.env.META_GRAPH_API_TOKEN?.trim())}
-          connectionLabel="backend isolado"
-          connectionTone="success"
-          metadata="Fluxo de publicacao existente mantido e pronto para evolucao."
-        />
-
-        <SecretStatusCard
           title="Infraestrutura de subdominio"
-          description="Parametros de dominio e cookies seguros para operar em painel.rbsite.com.br."
+          description="Parametros de dominio, cookies seguros e host canonico para operar em painel.rbsite.com.br."
           value={maskSecret(process.env.APP_CANONICAL_HOST, 10, 10)}
           configured={Boolean(process.env.APP_CANONICAL_HOST?.trim())}
           connectionLabel="subdominio pronto"
           connectionTone="success"
           metadata={`Host canonico atual: ${process.env.APP_CANONICAL_HOST ?? "painel.rbsite.com.br"}`}
+        />
+
+        <SecretStatusCard
+          title="Modo de geracao"
+          description="Define se o produto aceita fallback local ou exige IA real quando o usuario aciona o gerador."
+          value={String(process.env.OPENAI_GENERATION_MODE ?? "auto").toUpperCase()}
+          configured={true}
+          connectionLabel={
+            process.env.OPENAI_GENERATION_MODE === "live"
+              ? "live obrigatorio"
+              : "modo configuravel"
+          }
+          connectionTone={
+            process.env.OPENAI_GENERATION_MODE === "live" ? "success" : "warning"
+          }
+          metadata="Os fluxos principais do dashboard e planner agora podem exigir modo live sem mascarar falhas com mock silencioso."
         />
       </section>
     </div>
