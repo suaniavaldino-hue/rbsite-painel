@@ -1,6 +1,7 @@
 import "server-only";
 
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -32,11 +33,37 @@ const CONTENTS_TABLE = "contents";
 
 let mutationLock = Promise.resolve();
 
-function getContentDataDir() {
+function resolveConfiguredContentDir() {
   const configuredDir = process.env.CONTENT_DATA_DIR?.trim();
 
+  if (!configuredDir) {
+    return undefined;
+  }
+
+  if (path.isAbsolute(configuredDir)) {
+    return configuredDir;
+  }
+
+  return path.resolve(/* turbopackIgnore: true */ process.cwd(), configuredDir);
+}
+
+function isServerlessReadonlyRuntime() {
+  return (
+    process.env.VERCEL === "1" ||
+    Boolean(process.env.LAMBDA_TASK_ROOT) ||
+    process.cwd().startsWith("/var/task")
+  );
+}
+
+function getContentDataDir() {
+  const configuredDir = resolveConfiguredContentDir();
+
   if (configuredDir) {
-    return path.resolve(/* turbopackIgnore: true */ process.cwd(), configuredDir);
+    return configuredDir;
+  }
+
+  if (isServerlessReadonlyRuntime()) {
+    return path.join(tmpdir(), ".rbsite-data");
   }
 
   return path.join(/* turbopackIgnore: true */ process.cwd(), ".rbsite-data");
