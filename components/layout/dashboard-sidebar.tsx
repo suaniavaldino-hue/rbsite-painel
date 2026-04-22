@@ -11,21 +11,21 @@ export function DashboardSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-[292px] shrink-0 xl:block">
-      <div className="surface-card sticky top-6 flex h-[calc(100vh-3rem)] flex-col rounded-[32px] p-5">
-        <LogoMark className="px-2 pb-6" />
+    <aside className="hidden w-[304px] shrink-0 2xl:w-[320px] xl:block">
+      <div className="surface-card sticky top-5 flex max-h-[calc(100vh-2.5rem)] flex-col rounded-[30px] p-4 2xl:p-5">
+        <LogoMark className="px-2 pb-5" />
 
-        <div className="mb-6 rounded-[24px] border border-amber-300/14 bg-amber-300/8 px-4 py-4">
+        <div className="mb-5 rounded-[24px] border border-amber-300/14 bg-amber-300/8 px-4 py-3.5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-amber-200">
             Painel protegido
           </p>
-          <p className="mt-3 text-sm leading-7 text-amber-50/90">
-            Rotas privadas e APIs internas agora exigem autenticacao
-            administrativa valida.
+          <p className="mt-3 text-sm leading-6 text-amber-50/90">
+            Rotas privadas, APIs internas e testes de integracao ficam liberados
+            apenas com sessao administrativa valida.
           </p>
         </div>
 
-        <nav className="flex-1 space-y-2 overflow-y-auto pr-1">
+        <nav className="flex-1 space-y-1.5 overflow-y-auto pr-1">
           {DASHBOARD_NAVIGATION.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -47,7 +47,7 @@ export function DashboardSidebar() {
                     {item.group}
                   </span>
                 </div>
-                <p className="mt-2 text-xs leading-6 text-slate-400">
+                <p className="mt-2 text-xs leading-5 text-slate-400">
                   {item.description}
                 </p>
               </Link>
