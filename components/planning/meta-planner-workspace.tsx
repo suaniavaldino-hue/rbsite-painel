@@ -208,7 +208,8 @@ export function MetaPlannerWorkspace({
               audience,
               funnelStage,
               extraContext,
-              fallbackToMock: true,
+              providerMode: "live",
+              fallbackToMock: false,
             }
           : {
               mode: "batch",
@@ -226,7 +227,8 @@ export function MetaPlannerWorkspace({
               audience,
               funnelStage,
               extraContext,
-              fallbackToMock: true,
+              providerMode: "live",
+              fallbackToMock: false,
             };
 
       const response = await fetch("/api/planner/generate", {
@@ -246,7 +248,7 @@ export function MetaPlannerWorkspace({
 
       await refreshItems();
       setFeedback(
-        `${result.data.items.length} item(ns) gerado(s) automaticamente com imagem, legenda, tags e agenda sugerida.`,
+        `${result.data.items.length} item(ns) gerado(s) em modo live com agenda sugerida e persistencia central no planner.`,
       );
       router.refresh();
     });
@@ -347,7 +349,7 @@ export function MetaPlannerWorkspace({
                   <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
                     {item.theme}
                   </p>
-                  <h3 className="mt-3 font-display text-xl font-semibold tracking-[-0.03em] text-white">
+                  <h3 className="mt-3 font-display text-[1.35rem] font-semibold leading-[1.08] tracking-[-0.03em] text-white md:text-[1.5rem]">
                     {item.content.title}
                   </h3>
                 </div>
@@ -486,24 +488,37 @@ export function MetaPlannerWorkspace({
 
   return (
     <div className="grid gap-6">
-      <section className="surface-card rounded-[32px] p-6 md:p-8">
+      <section className="surface-card rounded-[32px] p-6 md:p-8 lg:p-9">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
+          <div className="max-w-[50rem]">
             <span className="inline-flex rounded-full border border-amber-300/20 bg-amber-300/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.32em] text-amber-200">
               Meta planner engine
             </span>
-            <h1 className="mt-5 font-display text-3xl font-semibold tracking-[-0.05em] text-white md:text-4xl">
-              Gere conteudo e agenda no automatico com a mesma logica de
-              produto conversacional que inspira o Manus.
+            <h1 className="mt-5 max-w-4xl font-display text-[2rem] font-semibold tracking-[-0.05em] text-white md:text-[2.75rem] md:leading-[1.02]">
+              Gere conteudo e agenda com fluxo automatico, mas mantendo o modo
+              live como regra para operacao real.
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-slate-300">
-              O sistema gera titulo, descricao, hashtags, imagem premium, carrossel,
-              sugestao de melhor data e horario, lote em massa e empurra cada item
-              para a fila operacional do Meta Planner dentro do painel.
+            <p className="mt-5 max-w-3xl text-[15px] leading-7 text-slate-300 md:text-base md:leading-8">
+              O planner organiza titulo, descricao, hashtags, imagem premium,
+              lote em massa, melhor data e horario, depois encaminha cada item
+              para a fila operacional da Meta com mais clareza visual e menos
+              ruido na leitura.
             </p>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                Provider mode live
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                Fallback mock desligado
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                Agenda pronta para Meta
+              </span>
+            </div>
           </div>
 
-          <div className="grid min-w-[18rem] gap-3 rounded-[28px] border border-white/10 bg-slate-950/40 p-4">
+          <div className="grid w-full max-w-[22rem] gap-3 rounded-[28px] border border-white/10 bg-slate-950/40 p-4 md:p-5">
             <div className="flex items-center justify-between gap-4">
               <span className="text-xs uppercase tracking-[0.28em] text-slate-400">
                 Estado atual
@@ -548,7 +563,7 @@ export function MetaPlannerWorkspace({
       ) : null}
 
       {view === "planner" ? (
-        <section className="grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,0.84fr)_minmax(0,1.16fr)]">
           <form
             onSubmit={handleGenerate}
             className="surface-card rounded-[32px] p-6 md:p-8"
@@ -558,7 +573,7 @@ export function MetaPlannerWorkspace({
                 <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
                   Prompt central
                 </p>
-                <h2 className="mt-3 font-display text-2xl font-semibold tracking-[-0.03em] text-white">
+                <h2 className="mt-3 font-display text-[1.7rem] font-semibold tracking-[-0.03em] text-white md:text-[2rem]">
                   Gerar no automatico
                 </h2>
               </div>
@@ -584,6 +599,11 @@ export function MetaPlannerWorkspace({
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div className="mt-5 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 text-sm leading-7 text-slate-300">
+              O planner executa agora em modo live, sem esconder falhas de OpenAI,
+              Gemini ou Stability com fallback local silencioso.
             </div>
 
             <div className="mt-8 grid gap-4">
@@ -770,12 +790,12 @@ export function MetaPlannerWorkspace({
           </form>
 
           <div className="surface-card rounded-[32px] p-6 md:p-8">
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
                   Saida automatica
                 </p>
-                <h2 className="mt-3 font-display text-3xl font-semibold tracking-[-0.03em] text-white">
+                <h2 className="mt-3 font-display text-[1.85rem] font-semibold tracking-[-0.03em] text-white md:text-[2.15rem]">
                   Ultimos itens gerados
                 </h2>
               </div>
@@ -808,7 +828,7 @@ export function MetaPlannerWorkspace({
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
                 Calendario inteligente
               </p>
-              <h2 className="mt-3 font-display text-2xl font-semibold tracking-[-0.03em] text-white">
+              <h2 className="mt-3 font-display text-[1.65rem] font-semibold tracking-[-0.03em] text-white md:text-[2rem]">
                 Visao editorial no estilo Meta planner
               </h2>
             </div>
@@ -898,7 +918,7 @@ export function MetaPlannerWorkspace({
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
                 Agenda operacional
               </p>
-              <h2 className="mt-3 font-display text-2xl font-semibold tracking-[-0.03em] text-white">
+              <h2 className="mt-3 font-display text-[1.65rem] font-semibold tracking-[-0.03em] text-white md:text-[2rem]">
                 Fila pronta para Meta
               </h2>
             </div>
