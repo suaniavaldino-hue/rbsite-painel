@@ -1,6 +1,7 @@
 import type {
   ContentFormat,
   FunnelStage,
+  GenerationMode,
   SocialPlatform,
 } from "@/types/content-generation";
 import type {
@@ -19,6 +20,7 @@ const formatStrategies: PlannerFormatStrategy[] = [
 ];
 const platforms: SocialPlatform[] = ["instagram", "facebook", "both"];
 const funnelStages: FunnelStage[] = ["top", "middle", "bottom"];
+const providerModes: GenerationMode[] = ["auto", "live", "mock"];
 
 const MAX_BATCH_ITEMS = 12;
 
@@ -86,6 +88,14 @@ function normalizeQuantity(value: unknown) {
   return normalized;
 }
 
+function resolveDefaultFallbackToMock() {
+  return process.env.NODE_ENV !== "production";
+}
+
+function resolveDefaultProviderMode() {
+  return process.env.NODE_ENV === "production" ? "live" : "auto";
+}
+
 export function parsePlannerGenerationRequest(
   payload: unknown,
 ): PlannerGenerationRequest {
@@ -112,8 +122,14 @@ export function parsePlannerGenerationRequest(
     audience: ensureRequiredText(data.audience, "audience", 160),
     funnelStage: ensureEnum(data.funnelStage ?? "middle", funnelStages, "funnelStage"),
     extraContext: sanitizeOptionalText(data.extraContext, 500),
+    providerMode:
+      data.providerMode === undefined
+        ? resolveDefaultProviderMode()
+        : ensureEnum(data.providerMode, providerModes, "providerMode"),
     fallbackToMock:
-      typeof data.fallbackToMock === "boolean" ? data.fallbackToMock : true,
+      typeof data.fallbackToMock === "boolean"
+        ? data.fallbackToMock
+        : resolveDefaultFallbackToMock(),
   };
 
   if (request.mode === "single" && !request.theme) {
