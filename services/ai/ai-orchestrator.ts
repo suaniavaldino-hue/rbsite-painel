@@ -216,6 +216,16 @@ async function generateImageWithFallback(
     }
   }
 
+  if (!request.fallbackToMock) {
+    if (warnings.length > 0) {
+      throw new Error(warnings.join(" | "));
+    }
+
+    throw new Error(
+      "Nenhum provedor de imagem esta configurado para operacao live. Configure Stability AI ou Canva.",
+    );
+  }
+
   const mockImage = buildMockImageResult(request, textResult.content);
   return {
     ...mockImage,
