@@ -62,6 +62,18 @@ export async function POST(request: Request) {
     await assertLoginAllowed(email, ipAddress);
 
     const admin = await resolveAdminByEmail(email);
+
+    if (admin && !admin.passwordHash?.trim()) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Painel ainda nao configurado: defina AUTH_ADMIN_PASSWORD_HASH no projeto rbsite-painel para liberar o login admin.",
+        },
+        { status: 503 },
+      );
+    }
+
     const passwordValid = admin
       ? await verifyAdminPasswordForEmail(email, password)
       : false;
