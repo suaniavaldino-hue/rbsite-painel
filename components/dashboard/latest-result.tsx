@@ -9,6 +9,30 @@ type LatestResultProps = {
   pending?: boolean;
 };
 
+function providerLabel(value: string) {
+  if (value === "openai") {
+    return "OpenAI";
+  }
+
+  if (value === "gemini") {
+    return "Gemini";
+  }
+
+  if (value === "stability") {
+    return "Stability";
+  }
+
+  if (value === "canva") {
+    return "Canva";
+  }
+
+  if (value === "mock") {
+    return "Mock local";
+  }
+
+  return value;
+}
+
 export function LatestResult({
   latestCreative,
   fallbackRecord,
@@ -29,17 +53,29 @@ export function LatestResult({
   if (latestCreative) {
     return (
       <article className="overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.045] shadow-[0_18px_48px_rgb(2_6_23_/_0.22)]">
-        <div className="grid gap-6 p-6 xl:grid-cols-[1.08fr_0.92fr]">
+        <div className="grid gap-6 p-6 xl:grid-cols-[1.02fr_0.98fr] xl:p-7">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-amber-200">
               Ultimo conteudo gerado
             </p>
-            <h2 className="mt-4 font-display text-3xl font-semibold tracking-[-0.04em] text-white">
+            <h2 className="mt-4 max-w-2xl font-display text-[1.95rem] font-semibold leading-[1.04] tracking-[-0.04em] text-white md:text-[2.35rem]">
               {latestCreative.title}
             </h2>
-            <p className="mt-4 text-base leading-8 text-slate-300">
+            <p className="mt-4 text-[15px] leading-7 text-slate-300 md:text-base md:leading-8">
               {latestCreative.content}
             </p>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                Texto: {providerLabel(latestCreative.meta.textProvider)}
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                Imagem: {providerLabel(latestCreative.meta.imageProvider)}
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
+                {latestCreative.meta.usedMockFallback ? "Fallback detectado" : "Modo live"}
+              </span>
+            </div>
 
             <div className="mt-6 grid gap-3 rounded-[24px] border border-white/10 bg-slate-950/40 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
@@ -49,6 +85,12 @@ export function LatestResult({
                 {latestCreative.caption}
               </p>
             </div>
+
+            {latestCreative.meta.warnings.length > 0 ? (
+              <div className="mt-4 rounded-[22px] border border-amber-300/18 bg-amber-300/8 px-4 py-4 text-sm leading-7 text-amber-50/90">
+                {latestCreative.meta.warnings[0]}
+              </div>
+            ) : null}
 
             <div className="mt-5 flex flex-wrap gap-2">
               {latestCreative.hashtags.slice(0, 8).map((tag) => (
@@ -69,7 +111,7 @@ export function LatestResult({
               width={880}
               height={880}
               unoptimized
-              className="h-full min-h-[20rem] w-full rounded-[22px] object-cover"
+              className="h-full min-h-[18rem] w-full rounded-[22px] object-cover"
             />
           </div>
         </div>
@@ -91,10 +133,10 @@ export function LatestResult({
       <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">
         Ultimo conteudo salvo
       </p>
-      <h2 className="mt-4 font-display text-3xl font-semibold tracking-[-0.04em] text-white">
+      <h2 className="mt-4 max-w-2xl font-display text-[1.9rem] font-semibold leading-[1.06] tracking-[-0.04em] text-white md:text-[2.25rem]">
         {fallbackRecord.title}
       </h2>
-      <p className="mt-4 text-base leading-8 text-slate-300">
+      <p className="mt-4 text-[15px] leading-7 text-slate-300 md:text-base md:leading-8">
         {fallbackRecord.content}
       </p>
     </article>
