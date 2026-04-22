@@ -36,7 +36,7 @@ export function PasswordRecoveryRequestForm({
           type="email"
           name="email"
           autoComplete="email"
-          placeholder="admin@rbsite.com.br"
+          placeholder="contato@rbsite.com.br"
           className="h-14 rounded-2xl border border-white/10 bg-slate-950/50 px-4 text-white outline-none transition focus:border-amber-300/40 focus:bg-slate-950/70"
           required
         />
