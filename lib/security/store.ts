@@ -1,6 +1,7 @@
 import "server-only";
 
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -20,11 +21,37 @@ let mutationLock = Promise.resolve();
 const LEGACY_ADMIN_EMAIL = "admin@rbsite.com.br";
 const DEFAULT_ADMIN_EMAIL = "contato@rbsite.com.br";
 
-function getSecurityDataDir() {
+function resolveConfiguredSecurityDir() {
   const configuredDir = process.env.AUTH_SECURITY_DATA_DIR?.trim();
 
+  if (!configuredDir) {
+    return undefined;
+  }
+
+  if (path.isAbsolute(configuredDir)) {
+    return configuredDir;
+  }
+
+  return path.resolve(/* turbopackIgnore: true */ process.cwd(), configuredDir);
+}
+
+function isServerlessReadonlyRuntime() {
+  return (
+    process.env.VERCEL === "1" ||
+    Boolean(process.env.LAMBDA_TASK_ROOT) ||
+    process.cwd().startsWith("/var/task")
+  );
+}
+
+function getSecurityDataDir() {
+  const configuredDir = resolveConfiguredSecurityDir();
+
   if (configuredDir) {
-    return path.resolve(/* turbopackIgnore: true */ process.cwd(), configuredDir);
+    return configuredDir;
+  }
+
+  if (isServerlessReadonlyRuntime()) {
+    return path.join(tmpdir(), ".rbsite-secure");
   }
 
   return path.join(/* turbopackIgnore: true */ process.cwd(), ".rbsite-secure");
