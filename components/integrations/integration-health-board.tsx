@@ -13,6 +13,8 @@ type ProviderCard = {
   endpoint?: string;
   autoTest?: boolean;
   metadata?: string;
+  method?: "GET" | "POST";
+  actionLabel?: string;
 };
 
 type IntegrationHealthBoardProps = {
@@ -28,7 +30,7 @@ type ProviderResult = {
 type ProviderApiResponse = {
   success: boolean;
   data?: Record<string, unknown>;
-  error?: string;
+  error?: unknown;
 };
 
 function resolveSuccessMetadata(data?: Record<string, unknown>) {
@@ -40,9 +42,43 @@ function resolveSuccessMetadata(data?: Record<string, unknown>) {
     typeof data.model === "string" ? `Modelo: ${data.model}` : null,
     typeof data.message === "string" ? data.message : null,
     typeof data.appUrl === "string" ? `App: ${data.appUrl}` : null,
+    typeof data.from === "string" ? `Remetente: ${data.from}` : null,
+    typeof data.to === "string" ? `Destino: ${data.to}` : null,
+    typeof data.host === "string" ? `Host: ${data.host}` : null,
   ].filter(Boolean);
 
   return parts.join(" | ") || undefined;
+}
+
+function resolveErrorMetadata(error: unknown) {
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (error && typeof error === "object") {
+    const data = error as Record<string, unknown>;
+    const parts = [
+      typeof data.message === "string" ? data.message : null,
+      typeof data.code === "number" || typeof data.code === "string"
+        ? `Code: ${String(data.code)}`
+        : null,
+      typeof data.type === "string" ? `Tipo: ${data.type}` : null,
+      typeof data.traceId === "string" ? `Trace: ${data.traceId}` : null,
+      typeof data.appUrl === "string" ? `App: ${data.appUrl}` : null,
+    ].filter(Boolean);
+
+    if (parts.length > 0) {
+      return parts.join(" | ");
+    }
+
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return "Falha inesperada ao testar a integracao.";
+    }
+  }
+
+  return "Falha inesperada ao testar a integracao.";
 }
 
 export function IntegrationHealthBoard({
@@ -55,6 +91,7 @@ export function IntegrationHealthBoard({
 
   async function runTest(card: ProviderCard) {
     const endpoint = card.endpoint;
+    const method = card.method ?? "GET";
 
     if (!endpoint || !card.configured) {
       setProviderResults((current) => ({
@@ -75,12 +112,13 @@ export function IntegrationHealthBoard({
         ...current,
         [card.id]: {
           status: "loading",
-          label: "testando",
+          label: method === "POST" ? "enviando" : "testando",
         },
       }));
 
       try {
         const response = await fetch(endpoint, {
+          method,
           credentials: "include",
         });
         const result = (await response.json()) as ProviderApiResponse;
@@ -91,9 +129,7 @@ export function IntegrationHealthBoard({
             [card.id]: {
               status: "error",
               label: "erro",
-              metadata:
-                result.error ??
-                "O provedor respondeu com falha durante o healthcheck.",
+              metadata: resolveErrorMetadata(result.error),
             },
           }));
           return;
@@ -103,7 +139,7 @@ export function IntegrationHealthBoard({
           ...current,
           [card.id]: {
             status: "success",
-            label: "conectado",
+            label: method === "POST" ? "enviado" : "conectado",
             metadata: resolveSuccessMetadata(result.data),
           },
         }));
@@ -113,10 +149,7 @@ export function IntegrationHealthBoard({
           [card.id]: {
             status: "error",
             label: "erro",
-            metadata:
-              error instanceof Error
-                ? error.message
-                : "Falha inesperada ao testar a integracao.",
+            metadata: resolveErrorMetadata(error),
           },
         }));
       }
@@ -125,7 +158,13 @@ export function IntegrationHealthBoard({
 
   useEffect(() => {
     cards
-      .filter((card) => card.autoTest && card.configured && card.endpoint)
+      .filter(
+        (card) =>
+          card.autoTest &&
+          card.configured &&
+          card.endpoint &&
+          (card.method ?? "GET") === "GET",
+      )
       .forEach((card) => {
         void runTest(card);
       });
@@ -163,8 +202,10 @@ export function IntegrationHealthBoard({
                   className="inline-flex h-11 items-center justify-center rounded-full border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {providerResult?.status === "loading"
-                    ? "Testando..."
-                    : "Testar conexao"}
+                    ? card.method === "POST"
+                      ? "Enviando..."
+                      : "Testando..."
+                    : card.actionLabel ?? "Testar conexao"}
                 </button>
               ) : null
             }
