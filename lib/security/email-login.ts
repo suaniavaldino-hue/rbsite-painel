@@ -1,22 +1,22 @@
 import "server-only";
 
-import { randomInt, randomUUID } from "node:crypto";
+import { randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 
 import nodemailer from "nodemailer";
 
-import {
-  DEFAULT_EMAIL_LOGIN_MAX_ATTEMPTS,
-  DEFAULT_EMAIL_LOGIN_TTL_MINUTES,
-} from "@/lib/security/constants";
-import { hashOpaqueToken } from "@/lib/security/crypto";
+import { DEFAULT_EMAIL_LOGIN_TTL_MINUTES } from "@/lib/security/constants";
+import { hashOpaqueToken, signValue } from "@/lib/security/crypto";
 import { logAuditEvent } from "@/lib/security/audit";
-import {
-  mutateSecurityState,
-  pruneExpiredEmailLoginChallenges,
-  readSecurityState,
-} from "@/lib/security/store";
 import { sanitizeEmail } from "@/lib/security/sanitize";
 import { env } from "@/lib/utils/env";
+
+type EmailChallengePayload = {
+  id: string;
+  email: string;
+  codeHash: string;
+  expiresAt: string;
+  createdAt: string;
+};
 
 function getEmailLoginTtlMs() {
   return (
@@ -24,18 +24,6 @@ function getEmailLoginTtlMs() {
     60 *
     1000
   );
-}
-
-function getEmailLoginMaxAttempts() {
-  const value = Number(
-    process.env.AUTH_EMAIL_OTP_MAX_ATTEMPTS ?? DEFAULT_EMAIL_LOGIN_MAX_ATTEMPTS,
-  );
-
-  if (!Number.isFinite(value) || value <= 0) {
-    return DEFAULT_EMAIL_LOGIN_MAX_ATTEMPTS;
-  }
-
-  return value;
 }
 
 export function isEmailLoginOtpEnabled() {
@@ -71,6 +59,64 @@ function getSmtpConfig() {
     auth: user && pass ? { user, pass } : undefined,
     from,
   };
+}
+
+function encodePayload(payload: EmailChallengePayload) {
+  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+}
+
+function decodePayload(value: string) {
+  const raw = Buffer.from(value, "base64url").toString("utf8");
+  return JSON.parse(raw) as Partial<EmailChallengePayload>;
+}
+
+function signChallengePayload(encodedPayload: string) {
+  return signValue(`email-login:${encodedPayload}`);
+}
+
+function createChallengeToken(payload: EmailChallengePayload) {
+  const encodedPayload = encodePayload(payload);
+  const signature = signChallengePayload(encodedPayload);
+
+  return `${encodedPayload}.${signature}`;
+}
+
+function verifyChallengeToken(token: string) {
+  const [encodedPayload, signature] = token.split(".");
+
+  if (!encodedPayload || !signature) {
+    return null;
+  }
+
+  const expectedSignature = signChallengePayload(encodedPayload);
+  const signatureBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expectedSignature);
+
+  if (signatureBuffer.length !== expectedBuffer.length) {
+    return null;
+  }
+
+  if (!timingSafeEqual(signatureBuffer, expectedBuffer)) {
+    return null;
+  }
+
+  try {
+    const payload = decodePayload(encodedPayload);
+
+    if (
+      typeof payload.id !== "string" ||
+      typeof payload.email !== "string" ||
+      typeof payload.codeHash !== "string" ||
+      typeof payload.expiresAt !== "string" ||
+      typeof payload.createdAt !== "string"
+    ) {
+      return null;
+    }
+
+    return payload as EmailChallengePayload;
+  } catch {
+    return null;
+  }
 }
 
 async function sendEmailLoginCodeEmail(input: {
@@ -153,37 +199,18 @@ export async function createEmailLoginChallenge(input: {
   const codeHash = hashOpaqueToken(code);
   const now = new Date();
   const expiresAt = new Date(now.getTime() + getEmailLoginTtlMs()).toISOString();
-
-  const challenge = await mutateSecurityState((state) => {
-    state.emailLoginChallenges = pruneExpiredEmailLoginChallenges(
-      state.emailLoginChallenges,
-    ).filter((item) => item.email !== email);
-
-    const challengeRecord = {
-      id: randomUUID(),
-      email,
-      codeHash,
-      createdAt: now.toISOString(),
-      expiresAt,
-      attempts: 0,
-      requestedIpAddress: input.ipAddress,
-      userAgent: input.userAgent,
-    };
-
-    state.emailLoginChallenges.push(challengeRecord);
-
-    return {
-      id: challengeRecord.id,
-      email,
-      expiresAt,
-      code,
-    };
+  const challengeId = createChallengeToken({
+    id: randomUUID(),
+    email,
+    codeHash,
+    expiresAt,
+    createdAt: now.toISOString(),
   });
 
   const delivery = await sendEmailLoginCodeEmail({
     email,
     code,
-    expiresAt: challenge.expiresAt,
+    expiresAt,
   });
 
   await logAuditEvent({
@@ -200,8 +227,8 @@ export async function createEmailLoginChallenge(input: {
   });
 
   return {
-    challengeId: challenge.id,
-    expiresAt: challenge.expiresAt,
+    challengeId,
+    expiresAt,
     previewCode: delivery.previewCode,
   };
 }
@@ -212,62 +239,58 @@ export async function consumeEmailLoginChallenge(input: {
   code: string;
 }) {
   const normalizedEmail = sanitizeEmail(input.email);
-  const challengeId = input.challengeId.trim();
+  const challenge = verifyChallengeToken(input.challengeId.trim());
   const codeHash = hashOpaqueToken(input.code.trim());
-  const now = Date.now();
-  const maxAttempts = getEmailLoginMaxAttempts();
 
-  return mutateSecurityState((state) => {
-    state.emailLoginChallenges = pruneExpiredEmailLoginChallenges(
-      state.emailLoginChallenges,
-    );
+  if (!challenge) {
+    return false;
+  }
 
-    const challenge = state.emailLoginChallenges.find(
-      (item) => item.id === challengeId && item.email === normalizedEmail,
-    );
+  if (challenge.email !== normalizedEmail) {
+    return false;
+  }
 
-    if (!challenge) {
-      return false;
-    }
+  if (new Date(challenge.expiresAt).getTime() <= Date.now()) {
+    return false;
+  }
 
-    if (challenge.consumedAt) {
-      return false;
-    }
+  const expectedBuffer = Buffer.from(challenge.codeHash);
+  const receivedBuffer = Buffer.from(codeHash);
 
-    if (new Date(challenge.expiresAt).getTime() <= now) {
-      return false;
-    }
+  if (expectedBuffer.length !== receivedBuffer.length) {
+    return false;
+  }
 
-    challenge.attempts += 1;
-
-    if (challenge.attempts > maxAttempts) {
-      challenge.consumedAt = new Date().toISOString();
-      return false;
-    }
-
-    if (challenge.codeHash !== codeHash) {
-      return false;
-    }
-
-    challenge.consumedAt = new Date().toISOString();
-    return true;
-  });
+  return timingSafeEqual(expectedBuffer, receivedBuffer);
 }
 
 export async function getActiveEmailLoginChallenge(input: {
   email: string;
   challengeId: string;
 }) {
-  const state = await readSecurityState();
-  const email = sanitizeEmail(input.email);
-  const challengeId = input.challengeId.trim();
-  const now = Date.now();
+  const normalizedEmail = sanitizeEmail(input.email);
+  const challenge = verifyChallengeToken(input.challengeId.trim());
 
-  return state.emailLoginChallenges.find(
-    (item) =>
-      item.email === email &&
-      item.id === challengeId &&
-      !item.consumedAt &&
-      new Date(item.expiresAt).getTime() > now,
-  );
+  if (!challenge) {
+    return undefined;
+  }
+
+  if (challenge.email !== normalizedEmail) {
+    return undefined;
+  }
+
+  if (new Date(challenge.expiresAt).getTime() <= Date.now()) {
+    return undefined;
+  }
+
+  return {
+    id: challenge.id,
+    email: challenge.email,
+    codeHash: challenge.codeHash,
+    createdAt: challenge.createdAt,
+    expiresAt: challenge.expiresAt,
+    attempts: 0,
+    requestedIpAddress: undefined,
+    userAgent: undefined,
+  };
 }
