@@ -8,7 +8,7 @@ export type GenerationMode = "auto" | "live" | "mock";
 
 export type GenerationSource = "openai" | "gemini" | "mock";
 
-export type ImageGenerationSource = "stability" | "canva" | "mock";
+export type ImageGenerationSource = "stability" | "pixabay" | "canva" | "mock";
 
 export type DesignGenerationSource = "canva" | "none";
 
