@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 import { getAdminSession, unauthorizedApiResponse } from "@/lib/auth/session";
 import { logAuditEvent } from "@/lib/security/audit";
@@ -7,8 +7,8 @@ import { createStabilityImageServiceFromEnv } from "@/services/ai/stability.serv
 
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
-  const session = await getAdminSession();
+export async function GET(request: NextRequest) {
+  const session = await getAdminSession(request);
 
   if (!session) {
     return unauthorizedApiResponse();
