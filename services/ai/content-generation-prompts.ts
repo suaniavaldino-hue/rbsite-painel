@@ -17,6 +17,7 @@ export function buildContentSystemPrompt() {
     "Facebook caption must be more explanatory, contextual, and commercially grounded.",
     "Instagram hashtags must contain at most 15 items.",
     "Facebook hashtags must contain at most 8 items.",
+    "artText must be a short on-image phrase with 3 to 12 words, suitable for visual overlay.",
     `Keep the brand anchored to ${BRAND.name}, website ${BRAND.website}, and WhatsApp ${BRAND.whatsapp}.`,
   ].join(" ");
 }
@@ -42,7 +43,8 @@ export function buildContentUserPrompt(request: ContentGenerationRequest) {
     request.extraContext
       ? `Contexto adicional: ${request.extraContext}.`
       : "Contexto adicional: nenhum.",
-    "Retorne titulo forte, subtitulo, hook, texto da arte, ideia visual, melhor horario sugerido em formato de dia e hora, um objeto postingSuggestion com weekday, time, isoDateTime e rationale, legenda para Instagram, legenda para Facebook, hashtags para Instagram e hashtags para Facebook.",
+    "Retorne titulo forte, subtitulo, hook, texto da arte curto para overlay na imagem, ideia visual, melhor horario sugerido em formato de dia e hora, um objeto postingSuggestion com weekday, time, isoDateTime e rationale, legenda para Instagram, legenda para Facebook, hashtags para Instagram e hashtags para Facebook.",
+    "Se o texto da arte nao for diferente do titulo, voce ainda deve preencher artText com uma versao curta e objetiva para aparecer na arte.",
     "Se o formato for carousel, gere capa com gancho, de 5 a 8 slides e o ultimo slide com CTA.",
     "Se o formato for reel, gere gancho inicial, cenas com visual, fala e texto na tela, e uma legenda curta para o reel.",
     "Evite frases vagas como 'sua empresa merece'. Prefira mensagens ligadas a autoridade, performance, conversao, SEO, site profissional e vendas.",
