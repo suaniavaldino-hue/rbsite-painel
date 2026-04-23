@@ -5,7 +5,6 @@ export const GENERATED_CONTENT_JSON_SCHEMA = {
     "title",
     "subtitle",
     "hook",
-    "artText",
     "visualIdea",
     "bestPostingTime",
     "postingSuggestion",
