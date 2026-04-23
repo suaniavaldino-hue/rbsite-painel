@@ -1,10 +1,12 @@
 import "server-only";
 
+import { Buffer } from "node:buffer";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 import {
   MAX_AUDIT_LOG_ENTRIES,
   SECURITY_STATE_VERSION,
@@ -20,6 +22,58 @@ import type {
 let mutationLock = Promise.resolve();
 const LEGACY_ADMIN_EMAIL = "admin@rbsite.com.br";
 const DEFAULT_ADMIN_EMAIL = "contato@rbsite.com.br";
+const DEFAULT_SECURITY_STORAGE_BUCKET = "rbsite-system";
+const DEFAULT_SECURITY_STORAGE_OBJECT = "security/security-state.json";
+
+function getSecurityStorageBucket() {
+  return (
+    process.env.AUTH_SECURITY_STORAGE_BUCKET?.trim() ||
+    DEFAULT_SECURITY_STORAGE_BUCKET
+  );
+}
+
+function getSecurityStorageObject() {
+  return (
+    process.env.AUTH_SECURITY_STORAGE_OBJECT?.trim() ||
+    DEFAULT_SECURITY_STORAGE_OBJECT
+  );
+}
+
+function getSupabaseSecurityClient() {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+    return null;
+  }
+
+  return getSupabaseServerClient();
+}
+
+async function ensureSupabaseSecurityBucket() {
+  const supabase = getSupabaseSecurityClient();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const bucket = getSecurityStorageBucket();
+  const { error: lookupError } = await supabase.storage.getBucket(bucket);
+
+  if (!lookupError) {
+    return supabase;
+  }
+
+  const { error: createError } = await supabase.storage.createBucket(bucket, {
+    public: false,
+    fileSizeLimit: 1024 * 1024,
+  });
+
+  if (createError && !createError.message.toLowerCase().includes("already")) {
+    throw new Error(
+      `Falha ao preparar storage de seguranca no Supabase: ${createError.message}`,
+    );
+  }
+
+  return supabase;
+}
 
 function resolveConfiguredSecurityDir() {
   const configuredDir = process.env.AUTH_SECURITY_DATA_DIR?.trim();
@@ -138,11 +192,56 @@ function normalizeState(state: SecurityState): SecurityState {
   };
 }
 
+async function readSupabaseState() {
+  const supabase = await ensureSupabaseSecurityBucket();
+
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase.storage
+    .from(getSecurityStorageBucket())
+    .download(getSecurityStorageObject());
+
+  if (error) {
+    const initialState = createInitialState();
+    await writeSupabaseState(initialState);
+    return initialState;
+  }
+
+  const rawState = await data.text();
+  return normalizeState(JSON.parse(rawState) as SecurityState);
+}
+
+async function writeSupabaseState(state: SecurityState) {
+  const supabase = await ensureSupabaseSecurityBucket();
+
+  if (!supabase) {
+    return false;
+  }
+
+  const serialized = JSON.stringify(normalizeState(state), null, 2);
+  const { error } = await supabase.storage
+    .from(getSecurityStorageBucket())
+    .upload(getSecurityStorageObject(), Buffer.from(serialized, "utf8"), {
+      contentType: "application/json",
+      upsert: true,
+    });
+
+  if (error) {
+    throw new Error(
+      `Falha ao persistir estado de seguranca no Supabase Storage: ${error.message}`,
+    );
+  }
+
+  return true;
+}
+
 async function ensureSecurityStorage() {
   await mkdir(getSecurityDataDir(), { recursive: true });
 }
 
-async function writeState(state: SecurityState) {
+async function writeLocalState(state: SecurityState) {
   await ensureSecurityStorage();
 
   const filePath = getSecurityStatePath();
@@ -153,7 +252,25 @@ async function writeState(state: SecurityState) {
   await rename(tempPath, filePath);
 }
 
+async function writeState(state: SecurityState) {
+  if (await writeSupabaseState(state)) {
+    return;
+  }
+
+  await writeLocalState(state);
+}
+
 export async function readSecurityState() {
+  try {
+    const supabaseState = await readSupabaseState();
+
+    if (supabaseState) {
+      return supabaseState;
+    }
+  } catch {
+    // If Supabase Storage is not ready yet, keep the app available with local dev fallback.
+  }
+
   try {
     const rawState = await readFile(getSecurityStatePath(), "utf8");
     return normalizeState(JSON.parse(rawState) as SecurityState);
