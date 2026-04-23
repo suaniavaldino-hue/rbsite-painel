@@ -1,16 +1,17 @@
 import "server-only";
 
 import { BRAND } from "@/lib/constants/brand";
+import { getCanonicalPanelUrl } from "@/lib/utils/env";
 import type { ContentFormat } from "@/types/content-generation";
 
-type PosterCompositionInput = {
+export type PosterCompositionInput = {
   format: ContentFormat;
   title: string;
   subtitle: string;
   hook: string;
   artText: string;
-  cta: string;
-  bestPostingTime: string;
+  cta?: string;
+  bestPostingTime?: string;
   backgroundHref?: string;
   eyebrow?: string;
   badgeLabel?: string;
@@ -18,7 +19,20 @@ type PosterCompositionInput = {
   footerRight?: string;
 };
 
+type ShareablePosterPayload = Pick<
+  PosterCompositionInput,
+  | "format"
+  | "title"
+  | "subtitle"
+  | "hook"
+  | "artText"
+  | "backgroundHref"
+  | "footerLeft"
+  | "footerRight"
+>;
+
 const FONT_STACK = "Segoe UI, Arial, Helvetica, sans-serif";
+const VALID_FORMATS = new Set<ContentFormat>(["post", "carousel", "reel"]);
 
 export function escapeSvg(value: string) {
   return value
@@ -84,6 +98,37 @@ function renderTextLines(input: {
       return `<text x="${input.x}" y="${y}" fill="${input.fill}" fill-opacity="${input.opacity ?? 1}" font-family="${FONT_STACK}" font-size="${input.fontSize}" font-weight="${input.fontWeight}" letter-spacing="${input.letterSpacing ?? "0"}">${escapeSvg(line)}</text>`;
     })
     .join("");
+}
+
+function normalizeShareableBackgroundHref(value?: string) {
+  if (!value || !/^https?:\/\//i.test(value)) {
+    return undefined;
+  }
+
+  return value;
+}
+
+function buildShareablePosterPayload(
+  input: PosterCompositionInput,
+): ShareablePosterPayload {
+  return {
+    format: input.format,
+    title: input.title,
+    subtitle: input.subtitle,
+    hook: input.hook,
+    artText: input.artText,
+    backgroundHref: normalizeShareableBackgroundHref(input.backgroundHref),
+    footerLeft: input.footerLeft,
+    footerRight: input.footerRight,
+  };
+}
+
+function ensureString(value: unknown, field: string) {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`Poster payload field "${field}" is required.`);
+  }
+
+  return value.trim();
 }
 
 export function resolveCanvasSize(format: ContentFormat) {
@@ -249,4 +294,39 @@ export function buildPosterSvg(input: PosterCompositionInput) {
 
 export function buildPosterDataUrl(input: PosterCompositionInput) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(buildPosterSvg(input))}`;
+}
+
+export function buildPosterRenderUrl(input: PosterCompositionInput) {
+  const payload = Buffer.from(
+    JSON.stringify(buildShareablePosterPayload(input)),
+    "utf8",
+  ).toString("base64url");
+
+  return `${getCanonicalPanelUrl()}/api/posters/render?payload=${payload}`;
+}
+
+export function parsePosterPayload(payload: string): PosterCompositionInput {
+  const decoded = Buffer.from(payload, "base64url").toString("utf8");
+  const parsed = JSON.parse(decoded) as Partial<ShareablePosterPayload>;
+
+  if (!parsed.format || !VALID_FORMATS.has(parsed.format)) {
+    throw new Error("Poster payload format is invalid.");
+  }
+
+  return {
+    format: parsed.format,
+    title: ensureString(parsed.title, "title"),
+    subtitle: ensureString(parsed.subtitle, "subtitle"),
+    hook: ensureString(parsed.hook, "hook"),
+    artText: ensureString(parsed.artText, "artText"),
+    backgroundHref: normalizeShareableBackgroundHref(parsed.backgroundHref),
+    footerLeft:
+      typeof parsed.footerLeft === "string" && parsed.footerLeft.trim().length > 0
+        ? parsed.footerLeft.trim()
+        : undefined,
+    footerRight:
+      typeof parsed.footerRight === "string" && parsed.footerRight.trim().length > 0
+        ? parsed.footerRight.trim()
+        : undefined,
+  };
 }
