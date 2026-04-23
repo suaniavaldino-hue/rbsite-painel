@@ -38,6 +38,19 @@ body {
   color: var(--foreground);
 }
 
+main > div > section.surface-card:first-child h1 {
+  max-width: 44rem !important;
+  font-size: clamp(1.45rem, 2vw, 2.05rem) !important;
+  line-height: 1.12 !important;
+  letter-spacing: -0.035em !important;
+}
+
+@media (min-width: 1280px) {
+  main > div > section.surface-card:first-child h1 {
+    font-size: clamp(1.55rem, 1.65vw, 2.15rem) !important;
+  }
+}
+
 a {
   color: inherit;
   text-decoration: none;
