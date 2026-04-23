@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { type FormEvent, useState, useTransition } from "react";
+import { type FormEvent, useEffect, useState, useTransition } from "react";
 
 import { LogoWordmark } from "@/components/ui/logo-wordmark";
 
@@ -22,6 +22,8 @@ type EmailChallengeResponse = {
   };
   error?: string;
 };
+
+const SAVED_ADMIN_EMAIL_KEY = "rbsite.adminEmail";
 
 function sanitizeCallbackUrl(value: string) {
   if (!value.startsWith("/") || value.startsWith("//")) {
@@ -74,6 +76,22 @@ export function LoginForm({ callbackUrl, emailOtpEnabled }: LoginFormProps) {
   const [challengeId, setChallengeId] = useState("");
   const [challengeMessage, setChallengeMessage] = useState<string | null>(null);
   const [challengePreviewCode, setChallengePreviewCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    const savedEmail = window.localStorage.getItem(SAVED_ADMIN_EMAIL_KEY);
+
+    if (savedEmail) {
+      setEmail(savedEmail);
+    }
+  }, []);
+
+  useEffect(() => {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (normalizedEmail) {
+      window.localStorage.setItem(SAVED_ADMIN_EMAIL_KEY, normalizedEmail);
+    }
+  }, [email]);
 
   async function requestEmailChallenge() {
     const response = await fetch("/api/auth/email-challenge", {
@@ -194,13 +212,14 @@ export function LoginForm({ callbackUrl, emailOtpEnabled }: LoginFormProps) {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-10 grid gap-5">
+      <form onSubmit={handleSubmit} autoComplete="on" className="mt-10 grid gap-5">
         <label className="grid gap-2">
           <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
             Email administrativo
           </span>
           <input
             type="email"
+            name="email"
             autoComplete="username"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -218,6 +237,7 @@ export function LoginForm({ callbackUrl, emailOtpEnabled }: LoginFormProps) {
             <span className="h-2.5 w-2.5 rounded-full bg-amber-300/60" />
             <input
               type="password"
+              name="password"
               autoComplete="current-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -251,6 +271,8 @@ export function LoginForm({ callbackUrl, emailOtpEnabled }: LoginFormProps) {
               <input
                 type="text"
                 inputMode="numeric"
+                name="one-time-code"
+                autoComplete="one-time-code"
                 value={emailLoginCode}
                 onChange={(event) => setEmailLoginCode(event.target.value)}
                 placeholder="123456"
