@@ -111,6 +111,7 @@ async function sendEmailLoginCodeEmail(input: {
       return {
         delivered: false,
         previewCode: input.code,
+        delivery: "preview" as const,
       };
     }
 
@@ -125,7 +126,7 @@ async function sendEmailLoginCodeEmail(input: {
     timeZone: env.timezone,
   }).format(new Date(input.expiresAt));
 
-  await sendTransactionalEmail({
+  const smtpResult = await sendTransactionalEmail({
     to: input.email,
     subject: "Codigo de confirmacao do painel RB Site",
     text: [
@@ -158,6 +159,8 @@ async function sendEmailLoginCodeEmail(input: {
   return {
     delivered: true,
     previewCode: undefined,
+    delivery: "smtp" as const,
+    smtp: smtpResult,
   };
 }
 
@@ -192,9 +195,18 @@ export async function createEmailLoginChallenge(input: {
       ipAddress: input.ipAddress,
       userAgent: input.userAgent,
     },
-    message: "Codigo de confirmacao por email gerado para login administrativo.",
+    message: delivery.delivered
+      ? "Codigo de confirmacao por email enviado para login administrativo."
+      : "Codigo de confirmacao por email gerado em modo preview.",
     metadata: {
+      delivery: delivery.delivery,
       preview: Boolean(delivery.previewCode),
+      accepted: delivery.smtp?.accepted ?? [],
+      rejected: delivery.smtp?.rejected ?? [],
+      smtpResponse: delivery.smtp?.response ?? "n/a",
+      smtpMessageId: delivery.smtp?.messageId ?? "n/a",
+      smtpFrom: delivery.smtp?.from ?? "n/a",
+      smtpEnvelopeFrom: delivery.smtp?.envelopeFrom ?? "n/a",
     },
   });
 
