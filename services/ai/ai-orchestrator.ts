@@ -11,30 +11,28 @@ import { generateMockContent } from "./mock-content-service";
 import { createCanvaServiceFromEnv } from "./canva.service";
 import { createGeminiContentServiceFromEnv } from "./gemini.service";
 import { createOpenAIContentServiceFromEnv } from "./openai.service";
-import { buildPosterDataUrl } from "./poster-composer";
-import { createStabilityImageServiceFromEnv } from "./stability.service";
+import { buildPosterRenderUrl } from "./poster-composer";
+import { createPixabayImageServiceFromEnv } from "./pixabay.service";
+import {
+  createStabilityImageServiceFromEnv,
+  StabilityImageServiceError,
+} from "./stability.service";
 
 function buildMockImageResult(
   request: AiOrchestratorRequest,
   generated: ContentGenerationResult["content"],
 ): ImageGenerationResult {
+  const posterUrl = buildPosterRenderUrl({
+    format: request.format,
+    title: generated.title,
+    subtitle: generated.subtitle,
+    hook: generated.hook,
+    artText: generated.artText,
+  });
+
   return {
-    imageUrl: buildPosterDataUrl({
-      format: request.format,
-      title: generated.title,
-      subtitle: generated.subtitle,
-      hook: generated.hook,
-      artText: generated.artText,
-      cta: request.cta,
-      bestPostingTime: generated.bestPostingTime,
-      eyebrow: "RB SITE SOCIAL AUTOMATION",
-      badgeLabel:
-        request.format === "carousel"
-          ? "CARROSSEL"
-          : request.format === "reel"
-            ? "REEL"
-            : "POST",
-    }),
+    imageUrl: posterUrl,
+    shareImageUrl: posterUrl,
     provider: "mock",
     model: "rbsite-premium-poster-fallback",
   };
@@ -112,9 +110,25 @@ async function generateImageWithFallback(
   request: AiOrchestratorRequest,
   textResult: ContentGenerationResult,
 ) {
+  const pixabayService = createPixabayImageServiceFromEnv();
   const stabilityService = createStabilityImageServiceFromEnv();
   const canvaService = createCanvaServiceFromEnv();
   const warnings: string[] = [];
+
+  if (request.mode !== "mock" && pixabayService) {
+    try {
+      return await pixabayService.generate({
+        request,
+        generated: textResult.content,
+      });
+    } catch (error) {
+      warnings.push(
+        error instanceof Error
+          ? error.message
+          : "Pixabay falhou ao selecionar a imagem de apoio.",
+      );
+    }
+  }
 
   if (request.mode !== "mock" && stabilityService) {
     try {
@@ -124,9 +138,11 @@ async function generateImageWithFallback(
       });
     } catch (error) {
       warnings.push(
-        error instanceof Error
+        error instanceof StabilityImageServiceError
           ? error.message
-          : "Stability falhou na geracao da imagem.",
+          : error instanceof Error
+            ? error.message
+            : "Stability falhou na geracao da imagem.",
       );
     }
   }
@@ -149,15 +165,11 @@ async function generateImageWithFallback(
     }
   }
 
-  if (!request.fallbackToMock) {
-    if (warnings.length > 0) {
-      throw new Error(warnings.join(" | "));
-    }
-
-    throw new Error(
-      "Nenhum provedor de imagem esta configurado para operacao live. Configure Stability AI ou Canva.",
-    );
-  }
+  warnings.push(
+    pixabayService
+      ? "O compositor interno finalizou a arte para manter o fluxo operacional sem bloquear a geracao."
+      : "Sem Pixabay configurado, o compositor interno assumiu a arte final para evitar falha dura de imagem.",
+  );
 
   const mockImage = buildMockImageResult(request, textResult.content);
   return {
@@ -190,6 +202,7 @@ export async function generateOrchestratedContent(
     caption,
     hashtags,
     image_url: imageResult.imageUrl,
+    publication_image_url: imageResult.shareImageUrl ?? imageResult.imageUrl,
     captions: textResult.content.captions,
     hashtagsByPlatform: textResult.content.hashtags,
     generated: {
