@@ -3,12 +3,25 @@ import "server-only";
 import type { ContentFormat } from "@/types/content-generation";
 import type { ImageGenerationInput, ImageGenerationResult } from "@/types/ai";
 
-import { buildPosterDataUrl } from "./poster-composer";
+import { buildPosterDataUrl, buildPosterRenderUrl } from "./poster-composer";
 
 type StabilityImageServiceOptions = {
   apiKey: string;
   model: "core" | "ultra";
 };
+
+export class StabilityImageServiceError extends Error {
+  readonly status: number;
+
+  readonly rawBody: string;
+
+  constructor(status: number, message: string, rawBody: string) {
+    super(message);
+    this.name = "StabilityImageServiceError";
+    this.status = status;
+    this.rawBody = rawBody;
+  }
+}
 
 function resolveAspectRatio(format: ContentFormat) {
   if (format === "reel") {
@@ -33,6 +46,7 @@ function buildBackgroundPrompt(input: ImageGenerationInput) {
     "Never show text-like symbols, fake logos, pseudo brand marks, pseudo letters or typographic shapes inside the generated image.",
     "Background should be atmospheric and clean, designed only to support overlay typography that will be added later by the system.",
     "Deep navy and near-black base, elegant orange highlights, subtle cyan light trail only if needed, clean left-side negative space.",
+    "Niche focus: web design, design grafico, branding, performance, SEO, sites profissionais e autoridade digital.",
     orientation + ".",
     `Theme: ${input.request.theme}.`,
     `Objective: ${input.request.objective}.`,
@@ -75,6 +89,22 @@ function buildNegativePrompt() {
   ].join(", ");
 }
 
+function mapStabilityError(status: number, errorBody: string) {
+  if (status === 402) {
+    return "Stability sem creditos no momento. O painel vai tentar uma alternativa fotografica do acervo Pixabay ou seguir com compositor interno.";
+  }
+
+  if (status === 429) {
+    return "Stability atingiu limite temporario de uso. O painel vai usar uma alternativa de imagem sem interromper a geracao.";
+  }
+
+  if (status >= 500) {
+    return "Stability ficou indisponivel temporariamente. O painel vai usar uma alternativa de imagem sem interromper a geracao.";
+  }
+
+  return `Stability image generation failed with status ${status}.`;
+}
+
 export class StabilityImageService {
   private readonly apiKey: string;
 
@@ -108,8 +138,10 @@ export class StabilityImageService {
 
     if (!response.ok) {
       const errorBody = await response.text();
-      throw new Error(
-        `Stability image generation failed: ${response.status} ${errorBody}`,
+      throw new StabilityImageServiceError(
+        response.status,
+        mapStabilityError(response.status, errorBody),
+        errorBody,
       );
     }
 
@@ -123,16 +155,14 @@ export class StabilityImageService {
         subtitle: input.generated.subtitle,
         hook: input.generated.hook,
         artText: input.generated.artText,
-        cta: input.request.cta,
-        bestPostingTime: input.generated.bestPostingTime,
         backgroundHref,
-        eyebrow: "RB SITE SOCIAL AUTOMATION",
-        badgeLabel:
-          input.request.format === "carousel"
-            ? "CARROSSEL"
-            : input.request.format === "reel"
-              ? "REEL"
-              : "POST",
+      }),
+      shareImageUrl: buildPosterRenderUrl({
+        format: input.request.format,
+        title: input.generated.title,
+        subtitle: input.generated.subtitle,
+        hook: input.generated.hook,
+        artText: input.generated.artText,
       }),
       provider: "stability",
       model: `stable-image-${this.model}-poster`,
@@ -167,8 +197,10 @@ export class StabilityImageService {
 
     if (!response.ok) {
       const errorBody = await response.text();
-      throw new Error(
-        `Stability healthcheck failed: ${response.status} ${errorBody}`,
+      throw new StabilityImageServiceError(
+        response.status,
+        mapStabilityError(response.status, errorBody),
+        errorBody,
       );
     }
 
