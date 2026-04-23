@@ -91,87 +91,71 @@ export function resolveCanvasSize(format: ContentFormat) {
     return {
       width: 1080,
       height: 1920,
-      panelX: 54,
-      panelY: 164,
-      panelWidth: 610,
-      panelHeight: 1470,
-      heroMaxChars: 14,
-      heroFontSize: 84,
-      heroLineHeight: 82,
-      heroStartY: 392,
+      panelX: 60,
+      panelY: 184,
+      panelWidth: 600,
+      panelHeight: 1180,
+      heroMaxChars: 16,
+      heroFontSize: 72,
+      heroLineHeight: 74,
+      heroStartY: 360,
       supportMaxChars: 26,
       supportFontSize: 28,
       supportLineHeight: 42,
-      supportStartY: 820,
+      supportStartY: 724,
       bodyMaxChars: 28,
       bodyFontSize: 22,
       bodyLineHeight: 34,
-      bodyStartY: 1014,
+      bodyStartY: 928,
       footerY: 1760,
-      badgeX: 860,
-      badgeY: 88,
-      ctaY: 1396,
-      scheduleY: 1520,
-      ctaWidth: 360,
-      scheduleWidth: 292,
-      panelAccentY: 742,
+      panelAccentY: 662,
     };
   }
 
   return {
     width: 1080,
     height: 1080,
-    panelX: 48,
-    panelY: 148,
-    panelWidth: 560,
-    panelHeight: 768,
-    heroMaxChars: 13,
-    heroFontSize: 66,
-    heroLineHeight: 66,
-    heroStartY: 284,
-    supportMaxChars: 22,
-    supportFontSize: 24,
-    supportLineHeight: 34,
-    supportStartY: 544,
+    panelX: 54,
+    panelY: 154,
+    panelWidth: 546,
+    panelHeight: 650,
+    heroMaxChars: 15,
+    heroFontSize: 56,
+    heroLineHeight: 58,
+    heroStartY: 270,
+    supportMaxChars: 24,
+    supportFontSize: 22,
+    supportLineHeight: 32,
+    supportStartY: 500,
     bodyMaxChars: 28,
     bodyFontSize: 18,
     bodyLineHeight: 28,
-    bodyStartY: 654,
+    bodyStartY: 610,
     footerY: 986,
-    badgeX: 862,
-    badgeY: 70,
-    ctaY: 820,
-    scheduleY: 820,
-    ctaWidth: 332,
-    scheduleWidth: 250,
-    panelAccentY: 506,
+    panelAccentY: 464,
   };
 }
 
 export function buildPosterSvg(input: PosterCompositionInput) {
   const canvas = resolveCanvasSize(input.format);
   const isVertical = input.format === "reel";
-  const eyebrow = input.eyebrow ?? "RB SITE SOCIAL AUTOMATION";
-  const badgeLabel = input.badgeLabel ?? input.format.toUpperCase();
   const footerLeft = input.footerLeft ?? BRAND.websiteLabel;
   const footerRight = input.footerRight ?? BRAND.email;
   const heroSource = normalizeHeadline(input.artText || input.hook || input.title);
-  const heroText = truncateText(heroSource, isVertical ? 50 : 38);
+  const heroText = truncateText(heroSource, isVertical ? 54 : 34);
   const supportText = truncateText(
     normalizeHeadline(input.title !== heroText ? input.title : input.hook),
-    isVertical ? 74 : 58,
+    isVertical ? 74 : 50,
   );
   const bodyText = truncateText(
     normalizeHeadline(input.subtitle !== supportText ? input.subtitle : ""),
-    isVertical ? 150 : 110,
+    isVertical ? 140 : 96,
   );
   const heroLines = wrapText(heroText, canvas.heroMaxChars).slice(0, isVertical ? 4 : 3);
   const supportLines = wrapText(supportText, canvas.supportMaxChars).slice(0, 3);
   const bodyLines = wrapText(bodyText, canvas.bodyMaxChars).slice(0, isVertical ? 4 : 3);
-  const ctaLines = wrapText(truncateText(input.cta.toUpperCase(), isVertical ? 24 : 18), isVertical ? 18 : 14).slice(0, 2);
-  const bestTime = truncateText(input.bestPostingTime.toUpperCase(), isVertical ? 22 : 16);
   const backgroundImage = input.backgroundHref
-    ? `<image href="${input.backgroundHref}" x="0" y="0" width="${canvas.width}" height="${canvas.height}" preserveAspectRatio="xMidYMid slice" filter="url(#bg-blur)" opacity="0.28" />`
+    ? `<image href="${input.backgroundHref}" x="0" y="0" width="${canvas.width}" height="${canvas.height}" preserveAspectRatio="xMidYMid slice" filter="url(#bg-blur)" opacity="0.24" />`
     : "";
 
   return `
@@ -188,8 +172,8 @@ export function buildPosterSvg(input: PosterCompositionInput) {
       <stop offset="1" stop-color="#081726" stop-opacity="0.82"/>
     </linearGradient>
     <linearGradient id="panel" x1="${canvas.panelX}" y1="${canvas.panelY}" x2="${canvas.panelX + canvas.panelWidth}" y2="${canvas.panelY + canvas.panelHeight}" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#07111D" stop-opacity="0.94"/>
-      <stop offset="1" stop-color="#081726" stop-opacity="0.88"/>
+      <stop stop-color="#07111D" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#081726" stop-opacity="0.90"/>
     </linearGradient>
     <linearGradient id="accent-wave" x1="70" y1="${canvas.height - 250}" x2="${canvas.width - 40}" y2="${canvas.height - 90}" gradientUnits="userSpaceOnUse">
       <stop stop-color="#FE770B"/>
@@ -222,10 +206,6 @@ export function buildPosterSvg(input: PosterCompositionInput) {
     <rect x="${canvas.panelX}" y="${canvas.panelY}" width="${canvas.panelWidth}" height="${canvas.panelHeight}" rx="38" fill="url(#panel)" stroke="#FFFFFF" stroke-opacity="0.08"/>
   </g>
 
-  <text x="84" y="108" fill="#F8FAFC" font-family="${FONT_STACK}" font-size="20" font-weight="700" letter-spacing="5">${escapeSvg(eyebrow)}</text>
-  <rect x="${canvas.badgeX}" y="${canvas.badgeY}" width="144" height="48" rx="24" fill="#FE770B"/>
-  <text x="${canvas.badgeX + 72}" y="${canvas.badgeY + 31}" text-anchor="middle" fill="#081726" font-family="${FONT_STACK}" font-size="18" font-weight="900" letter-spacing="2">${escapeSvg(badgeLabel)}</text>
-
   ${renderTextLines({
     lines: heroLines,
     x: 92,
@@ -234,10 +214,10 @@ export function buildPosterSvg(input: PosterCompositionInput) {
     fontSize: canvas.heroFontSize,
     fill: "#FFFFFF",
     fontWeight: 900,
-    letterSpacing: "-1.3",
+    letterSpacing: "-1.1",
   })}
 
-  <rect x="92" y="${canvas.panelAccentY}" width="154" height="8" rx="4" fill="#FE770B"/>
+  <rect x="92" y="${canvas.panelAccentY}" width="132" height="8" rx="4" fill="#FE770B"/>
   ${renderTextLines({
     lines: supportLines,
     x: 92,
@@ -261,25 +241,6 @@ export function buildPosterSvg(input: PosterCompositionInput) {
     letterSpacing: "0",
     opacity: 0.9,
   })}
-
-  <g filter="url(#panel-shadow)">
-    <rect x="92" y="${canvas.ctaY}" width="${canvas.ctaWidth}" height="96" rx="26" fill="#FE770B"/>
-    <rect x="${canvas.panelX + canvas.panelWidth - canvas.scheduleWidth - 28}" y="${canvas.scheduleY}" width="${canvas.scheduleWidth}" height="96" rx="26" fill="#0B1827" fill-opacity="0.92" stroke="#FFFFFF" stroke-opacity="0.10"/>
-  </g>
-  <text x="122" y="${canvas.ctaY + 30}" fill="#081726" font-family="${FONT_STACK}" font-size="16" font-weight="800" letter-spacing="2.2">CTA</text>
-  ${renderTextLines({
-    lines: ctaLines,
-    x: 122,
-    startY: canvas.ctaY + 60,
-    lineHeight: 24,
-    fontSize: 22,
-    fill: "#081726",
-    fontWeight: 900,
-    letterSpacing: "-0.4",
-  })}
-
-  <text x="${canvas.panelX + canvas.panelWidth - canvas.scheduleWidth - 2}" y="${canvas.scheduleY + 30}" fill="#FFFFFF" font-family="${FONT_STACK}" font-size="15" font-weight="800" letter-spacing="2.1">MELHOR HORARIO</text>
-  <text x="${canvas.panelX + canvas.panelWidth - canvas.scheduleWidth - 2}" y="${canvas.scheduleY + 62}" fill="#F5A25A" font-family="${FONT_STACK}" font-size="20" font-weight="900" letter-spacing="-0.3">${escapeSvg(bestTime)}</text>
 
   <text x="84" y="${canvas.footerY}" fill="#F8FAFC" font-family="${FONT_STACK}" font-size="22" font-weight="700">${escapeSvg(footerLeft)}</text>
   <text x="${canvas.width - 84}" y="${canvas.footerY}" text-anchor="end" fill="#F8FAFC" font-family="${FONT_STACK}" font-size="20" font-weight="600">${escapeSvg(footerRight)}</text>
