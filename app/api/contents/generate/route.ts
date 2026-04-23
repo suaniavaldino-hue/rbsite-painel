@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 import { executeGenerateContent } from "@/actions/contents/generate-content";
 import { getAdminSession, unauthorizedApiResponse } from "@/lib/auth/session";
@@ -12,8 +12,8 @@ import { ContentGenerationServiceError } from "@/services/ai/content-generation-
 
 export const runtime = "nodejs";
 
-export async function POST(request: Request) {
-  const session = await getAdminSession();
+export async function POST(request: NextRequest) {
+  const session = await getAdminSession(request);
 
   if (!session) {
     return unauthorizedApiResponse();
@@ -73,11 +73,11 @@ export async function POST(request: Request) {
           email: session.user.email ?? undefined,
           role: "admin",
           ipAddress: getClientIpAddress(request.headers),
-        userAgent: getUserAgent(request.headers),
-      },
-      message: "Falha validada na geracao de conteudo.",
-      metadata: {
-        reason: error.message,
+          userAgent: getUserAgent(request.headers),
+        },
+        message: "Falha validada na geracao de conteudo.",
+        metadata: {
+          reason: error.message,
         },
       });
 
