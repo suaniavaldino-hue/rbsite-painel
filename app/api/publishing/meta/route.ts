@@ -8,6 +8,7 @@ import {
   MetaPublishingValidationError,
   parseMetaPublicationRequest,
 } from "@/lib/validations/meta-publishing";
+import { updateContent } from "@/services/database/content-repository";
 import {
   MetaPublishingServiceError,
   dispatchMetaPublication,
@@ -15,6 +16,18 @@ import {
 } from "@/services/meta/meta-publishing-service";
 
 export const runtime = "nodejs";
+
+function resolveContentStatus(status: "published" | "scheduled" | "planned" | "failed") {
+  if (status === "published") {
+    return "published" as const;
+  }
+
+  if (status === "failed") {
+    return "failed" as const;
+  }
+
+  return "scheduled" as const;
+}
 
 export async function POST(request: Request) {
   const session = await getAdminSession();
@@ -29,6 +42,33 @@ export async function POST(request: Request) {
     const payload = parseMetaPublicationRequest(body);
     const result = await dispatchMetaPublication(payload);
 
+    if (payload.contentId) {
+      try {
+        await updateContent(payload.contentId, {
+          status: resolveContentStatus(result.status),
+        });
+      } catch (persistError) {
+        await logAuditEvent({
+          event: "publication.persist_warning",
+          level: "warn",
+          actor: {
+            id: session.user.id,
+            email: session.user.email ?? undefined,
+            role: "admin",
+            ipAddress: getClientIpAddress(request.headers),
+            userAgent: getUserAgent(request.headers),
+          },
+          target: payload.platform,
+          message: "Publicacao concluida, mas a persistencia do status falhou.",
+          metadata: {
+            contentId: payload.contentId,
+            reason:
+              persistError instanceof Error ? persistError.message : "unknown",
+          },
+        });
+      }
+    }
+
     await logAuditEvent({
       event: "publication.dispatched",
       actor: {
@@ -41,10 +81,14 @@ export async function POST(request: Request) {
       target: payload.platform,
       message: "Operacao de publicacao para Meta executada.",
       metadata: {
+        contentId: payload.contentId,
         platform: payload.platform,
         mediaType: payload.mediaType,
         status: result.status,
         deliveryMode: result.deliveryMode,
+        scheduledFor: result.scheduledFor,
+        publishedAt: result.publishedAt,
+        permalink: result.permalink,
       },
     });
 
