@@ -47,34 +47,6 @@ function getSupabaseSecurityClient() {
   return getSupabaseServerClient();
 }
 
-async function ensureSupabaseSecurityBucket() {
-  const supabase = getSupabaseSecurityClient();
-
-  if (!supabase) {
-    return null;
-  }
-
-  const bucket = getSecurityStorageBucket();
-  const { error: lookupError } = await supabase.storage.getBucket(bucket);
-
-  if (!lookupError) {
-    return supabase;
-  }
-
-  const { error: createError } = await supabase.storage.createBucket(bucket, {
-    public: false,
-    fileSizeLimit: 1024 * 1024,
-  });
-
-  if (createError && !createError.message.toLowerCase().includes("already")) {
-    throw new Error(
-      `Falha ao preparar storage de seguranca no Supabase: ${createError.message}`,
-    );
-  }
-
-  return supabase;
-}
-
 function resolveConfiguredSecurityDir() {
   const configuredDir = process.env.AUTH_SECURITY_DATA_DIR?.trim();
 
@@ -95,6 +67,52 @@ function isServerlessReadonlyRuntime() {
     Boolean(process.env.LAMBDA_TASK_ROOT) ||
     process.cwd().startsWith("/var/task")
   );
+}
+
+function requiresDurableSecurityPersistence() {
+  return (
+    process.env.AUTH_ALLOW_TEMP_SECURITY_STATE !== "true" &&
+    process.env.NODE_ENV === "production" &&
+    isServerlessReadonlyRuntime()
+  );
+}
+
+function buildDurablePersistenceError(reason?: string) {
+  const detail = reason ? ` Detalhe: ${reason}` : "";
+
+  return new Error(
+    `Persistencia duravel de seguranca indisponivel. Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY validos no Vercel e permita criar/usar o bucket privado "${getSecurityStorageBucket()}" no Supabase Storage.${detail}`,
+  );
+}
+
+async function ensureSupabaseSecurityBucket() {
+  const supabase = getSupabaseSecurityClient();
+
+  if (!supabase) {
+    if (requiresDurableSecurityPersistence()) {
+      throw buildDurablePersistenceError("SUPABASE_SERVICE_ROLE_KEY nao esta disponivel para o runtime.");
+    }
+
+    return null;
+  }
+
+  const bucket = getSecurityStorageBucket();
+  const { error: lookupError } = await supabase.storage.getBucket(bucket);
+
+  if (!lookupError) {
+    return supabase;
+  }
+
+  const { error: createError } = await supabase.storage.createBucket(bucket, {
+    public: false,
+    fileSizeLimit: 1024 * 1024,
+  });
+
+  if (createError && !createError.message.toLowerCase().includes("already")) {
+    throw buildDurablePersistenceError(createError.message);
+  }
+
+  return supabase;
 }
 
 function getSecurityDataDir() {
@@ -229,9 +247,7 @@ async function writeSupabaseState(state: SecurityState) {
     });
 
   if (error) {
-    throw new Error(
-      `Falha ao persistir estado de seguranca no Supabase Storage: ${error.message}`,
-    );
+    throw buildDurablePersistenceError(error.message);
   }
 
   return true;
@@ -257,8 +273,14 @@ async function writeState(state: SecurityState) {
     if (await writeSupabaseState(state)) {
       return;
     }
-  } catch {
-    // Keep authentication available if Supabase Storage is not ready yet.
+  } catch (error) {
+    if (requiresDurableSecurityPersistence()) {
+      throw error;
+    }
+  }
+
+  if (requiresDurableSecurityPersistence()) {
+    throw buildDurablePersistenceError();
   }
 
   await writeLocalState(state);
@@ -271,8 +293,10 @@ export async function readSecurityState() {
     if (supabaseState) {
       return supabaseState;
     }
-  } catch {
-    // If Supabase Storage is not ready yet, keep the app available with local dev fallback.
+  } catch (error) {
+    if (requiresDurableSecurityPersistence()) {
+      throw error;
+    }
   }
 
   try {
