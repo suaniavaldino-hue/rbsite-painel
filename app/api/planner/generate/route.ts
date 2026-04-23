@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 import { getAdminSession, unauthorizedApiResponse } from "@/lib/auth/session";
 import { logAuditEvent } from "@/lib/security/audit";
@@ -12,8 +12,8 @@ import { generatePlannerItems } from "@/services/planner/planner-service";
 
 export const runtime = "nodejs";
 
-export async function POST(request: Request) {
-  const session = await getAdminSession();
+export async function POST(request: NextRequest) {
+  const session = await getAdminSession(request);
 
   if (!session) {
     return unauthorizedApiResponse();
