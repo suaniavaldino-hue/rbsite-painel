@@ -50,6 +50,56 @@ function firstString(...values: unknown[]) {
   return undefined;
 }
 
+function truncateText(value: string, maxLength: number) {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, Math.max(0, maxLength - 3)).trimEnd()}...`;
+}
+
+function buildFallbackArtText(input: {
+  title: string;
+  hook: string;
+  subtitle: string;
+}) {
+  const preferred = firstString(input.hook, input.title, input.subtitle) ?? input.title;
+  return truncateText(preferred, 90);
+}
+
+function normalizeArtText(input: {
+  data: Record<string, unknown>;
+  title: string;
+  hook: string;
+  subtitle: string;
+}) {
+  return (
+    firstString(
+      input.data.artText,
+      input.data.art_text,
+      input.data.artCopy,
+      input.data.copyOnArt,
+      input.data.copy_on_art,
+      input.data.imageText,
+      input.data.image_text,
+      input.data.overlayText,
+      input.data.overlay_text,
+      input.data.textOnImage,
+      input.data.text_on_image,
+      input.data.postText,
+      input.data.post_text,
+      input.data.shortHeadline,
+      input.data.short_headline,
+      input.data.headline,
+    ) ??
+    buildFallbackArtText({
+      title: input.title,
+      hook: input.hook,
+      subtitle: input.subtitle,
+    })
+  );
+}
+
 function buildFallbackCaption(input: {
   title: string;
   subtitle: string;
@@ -266,7 +316,12 @@ export function normalizeGeneratedDocument(
     title,
     subtitle,
     hook,
-    artText: ensureString(data.artText, "artText"),
+    artText: normalizeArtText({
+      data,
+      title,
+      hook,
+      subtitle,
+    }),
     visualIdea: ensureString(data.visualIdea, "visualIdea"),
     bestPostingTime:
       (typeof data.bestPostingTime === "string" && data.bestPostingTime.trim()) ||
