@@ -3,7 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getAdminSession, unauthorizedApiResponse } from "@/lib/auth/session";
 import { logAuditEvent } from "@/lib/security/audit";
 import { getClientIpAddress, getUserAgent } from "@/lib/security/request";
-import { createStabilityImageServiceFromEnv } from "@/services/ai/stability.service";
+import {
+  createStabilityImageServiceFromEnv,
+  StabilityImageServiceError,
+} from "@/services/ai/stability.service";
 
 export const runtime = "nodejs";
 
@@ -57,9 +60,11 @@ export async function GET(request: NextRequest) {
       {
         success: false,
         error:
-          error instanceof Error
+          error instanceof StabilityImageServiceError
             ? error.message
-            : "Falha inesperada ao testar Stability.",
+            : error instanceof Error
+              ? error.message
+              : "Falha inesperada ao testar Stability.",
       },
       { status: 500 },
     );
