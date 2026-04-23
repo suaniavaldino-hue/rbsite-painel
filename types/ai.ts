@@ -6,7 +6,7 @@ import type {
 } from "@/types/content-generation";
 
 export type TextProvider = "openai" | "gemini" | "mock";
-export type ImageProvider = "stability" | "canva" | "mock";
+export type ImageProvider = "stability" | "pixabay" | "canva" | "mock";
 export type DesignProvider = "canva" | "none";
 
 export type AiOrchestratorRequest = ContentGenerationRequest;
@@ -17,6 +17,7 @@ export type AiOrchestratorResult = {
   caption: string;
   hashtags: string[];
   image_url: string;
+  publication_image_url: string;
   captions: CaptionSet;
   hashtagsByPlatform: HashtagSet;
   generated: GeneratedContentDocument;
@@ -39,6 +40,7 @@ export type ImageGenerationInput = {
 
 export type ImageGenerationResult = {
   imageUrl: string;
+  shareImageUrl?: string;
   provider: ImageProvider;
   model: string;
   warnings?: string[];
