@@ -2,11 +2,13 @@ import { IntegrationHealthBoard } from "@/components/integrations/integration-he
 import { SecretStatusCard } from "@/components/integrations/secret-status-card";
 import { maskSecret } from "@/lib/security/mask";
 import { getSupabaseConfigurationStatus } from "@/lib/supabase/server";
+import { getGeminiRuntimeConfigFromEnv } from "@/services/ai/gemini.service";
 
 export const dynamic = "force-dynamic";
 
 export default function IntegrationsPage() {
   const supabaseStatus = getSupabaseConfigurationStatus();
+  const geminiConfig = getGeminiRuntimeConfigFromEnv();
   const providerCards = [
     {
       id: "smtp",
@@ -44,7 +46,7 @@ export default function IntegrationsPage() {
       configured: Boolean(process.env.GEMINI_API_KEY?.trim()),
       endpoint: "/api/integrations/gemini",
       autoTest: true,
-      metadata: `Modelo alvo: ${process.env.GEMINI_MODEL ?? "gemini-2.5-flash"}`,
+      metadata: `Modelo alvo: ${geminiConfig?.primaryModel ?? "gemini-2.5-flash"} | Fallbacks: ${(geminiConfig?.fallbackModels ?? ["gemini-2.5-flash-lite"]).join(", ")}`,
     },
     {
       id: "meta",
