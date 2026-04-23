@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 import { getAdminSession, unauthorizedApiResponse } from "@/lib/auth/session";
 import { logAuditEvent } from "@/lib/security/audit";
@@ -31,8 +31,8 @@ function buildTestEmailHtml(email: string) {
   `;
 }
 
-export async function GET(request: Request) {
-  const session = await getAdminSession();
+export async function GET(request: NextRequest) {
+  const session = await getAdminSession(request);
 
   if (!session) {
     return unauthorizedApiResponse();
@@ -94,8 +94,8 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
-  const session = await getAdminSession();
+export async function POST(request: NextRequest) {
+  const session = await getAdminSession(request);
 
   if (!session) {
     return unauthorizedApiResponse();
