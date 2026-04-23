@@ -253,8 +253,12 @@ async function writeLocalState(state: SecurityState) {
 }
 
 async function writeState(state: SecurityState) {
-  if (await writeSupabaseState(state)) {
-    return;
+  try {
+    if (await writeSupabaseState(state)) {
+      return;
+    }
+  } catch {
+    // Keep authentication available if Supabase Storage is not ready yet.
   }
 
   await writeLocalState(state);
