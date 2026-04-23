@@ -22,12 +22,16 @@ function providerLabel(value: string) {
     return "Stability";
   }
 
+  if (value === "pixabay") {
+    return "Pixabay";
+  }
+
   if (value === "canva") {
     return "Canva";
   }
 
   if (value === "mock") {
-    return "Mock local";
+    return "Compositor interno";
   }
 
   return value;
