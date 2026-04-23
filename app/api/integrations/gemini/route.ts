@@ -3,7 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getAdminSession, unauthorizedApiResponse } from "@/lib/auth/session";
 import { logAuditEvent } from "@/lib/security/audit";
 import { getClientIpAddress, getUserAgent } from "@/lib/security/request";
-import { createGeminiContentServiceFromEnv } from "@/services/ai/gemini.service";
+import {
+  createGeminiContentServiceFromEnv,
+  getGeminiRuntimeConfigFromEnv,
+} from "@/services/ai/gemini.service";
 
 export const runtime = "nodejs";
 
@@ -24,6 +27,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const runtimeConfig = getGeminiRuntimeConfigFromEnv();
     const online = await service.testConnection();
 
     await logAuditEvent({
@@ -39,6 +43,8 @@ export async function GET(request: NextRequest) {
       message: "Teste de integracao Gemini executado.",
       metadata: {
         ok: online,
+        model: runtimeConfig?.primaryModel ?? "gemini-2.5-flash",
+        fallbackModels: runtimeConfig?.fallbackModels ?? [],
       },
     });
 
@@ -47,7 +53,8 @@ export async function GET(request: NextRequest) {
       data: {
         ok: online,
         provider: "gemini",
-        model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash",
+        model: runtimeConfig?.primaryModel ?? "gemini-2.5-flash",
+        fallbackModels: runtimeConfig?.fallbackModels ?? [],
         message: online
           ? "Gemini respondeu corretamente ao healthcheck."
           : "Gemini nao retornou a resposta esperada.",
