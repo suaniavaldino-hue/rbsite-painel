@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useDeferredValue, useState, useTransition } from "react";
+import { useDeferredValue, useEffect, useState, useTransition } from "react";
 
+import type { AuditLogEntry } from "@/lib/security/types";
 import type { AiOrchestratorResult } from "@/types/ai";
 import type { ContentRecord, ContentStatus } from "@/types/content";
 import type { ContentFormat, SocialPlatform } from "@/types/content-generation";
-import type { AuditLogEntry } from "@/lib/security/types";
+import type { MetaPublicationResult } from "@/types/meta-publishing";
 
 import { EmptyState } from "./empty-state";
 import { LatestResult } from "./latest-result";
@@ -25,6 +26,52 @@ type GenerateApiResponse = {
   };
   error?: string;
 };
+
+type MetaPublicationApiResponse = {
+  success: boolean;
+  data?: MetaPublicationResult;
+  error?: string | { message?: string };
+};
+
+type DashboardNotice = {
+  tone: "success" | "error" | "info";
+  message: string;
+};
+
+type GeneratedPostModalState = {
+  creative: AiOrchestratorResult;
+  record: ContentRecord;
+  format: ContentFormat;
+  platform: SocialPlatform;
+  theme: string;
+};
+
+const QUICK_THEME_INTROS = [
+  "Seu site",
+  "Sua marca",
+  "Sua landing page",
+  "Seu design",
+  "Sua presenca digital",
+  "Sua identidade visual",
+];
+
+const QUICK_THEME_ACTIONS = [
+  "pode estar afastando clientes",
+  "precisa transmitir mais autoridade",
+  "esta perdendo conversao",
+  "precisa vender melhor",
+  "precisa parecer mais premium",
+  "precisa gerar mais confianca",
+];
+
+const QUICK_THEME_FOCUS = [
+  "com foco em web design",
+  "com foco em design grafico",
+  "com foco em UX e conversao",
+  "com foco em branding profissional",
+  "com foco em SEO e performance",
+  "com foco em sites que vendem",
+];
 
 function countByStatus(items: ContentRecord[], status: ContentStatus) {
   return items.filter((item) => item.status === status).length;
@@ -47,15 +94,86 @@ function formatProviderName(value: string) {
     return "Stability";
   }
 
+  if (value === "pixabay") {
+    return "Pixabay";
+  }
+
   if (value === "canva") {
     return "Canva";
   }
 
   if (value === "mock") {
-    return "Mock local";
+    return "Compositor interno";
   }
 
   return value;
+}
+
+function buildQuickTheme(previous?: string) {
+  let candidate = previous ?? "";
+  let guard = 0;
+
+  while (candidate === previous && guard < 12) {
+    const intro =
+      QUICK_THEME_INTROS[Math.floor(Math.random() * QUICK_THEME_INTROS.length)];
+    const action =
+      QUICK_THEME_ACTIONS[
+        Math.floor(Math.random() * QUICK_THEME_ACTIONS.length)
+      ];
+    const focus =
+      QUICK_THEME_FOCUS[Math.floor(Math.random() * QUICK_THEME_FOCUS.length)];
+
+    candidate = `${intro} ${action} ${focus}`;
+    guard += 1;
+  }
+
+  return candidate;
+}
+
+function randomQuickThemeDelayMs() {
+  return 60_000 + Math.floor(Math.random() * 60_001);
+}
+
+function resolveTargetPlatforms(platform: SocialPlatform) {
+  if (platform === "both") {
+    return ["instagram", "facebook"] as const;
+  }
+
+  return [platform] as const;
+}
+
+function resolvePlatformLabel(platforms: readonly string[]) {
+  if (platforms.length === 2) {
+    return "Instagram e Facebook";
+  }
+
+  return platforms[0] === "instagram" ? "Instagram" : "Facebook";
+}
+
+function resolveMetaErrorMessage(error: MetaPublicationApiResponse["error"]) {
+  if (!error) {
+    return "Nao foi possivel concluir a operacao na Meta.";
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  return error.message ?? "Nao foi possivel concluir a operacao na Meta.";
+}
+
+function formatScheduledLabel(value?: string) {
+  if (!value) {
+    return "a melhor janela sugerida";
+  }
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
 export function DashboardOverview({
@@ -66,7 +184,7 @@ export function DashboardOverview({
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<ContentFormat | "all">("all");
   const [statusFilter, setStatusFilter] = useState<ContentStatus | "all">("all");
-  const [theme, setTheme] = useState("Seu site pode estar afastando clientes");
+  const [theme, setTheme] = useState(() => buildQuickTheme());
   const [format, setFormat] = useState<ContentFormat>("post");
   const [platform, setPlatform] = useState<SocialPlatform>("both");
   const [latestCreative, setLatestCreative] = useState<AiOrchestratorResult | null>(
@@ -74,8 +192,34 @@ export function DashboardOverview({
   );
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<DashboardNotice | null>(null);
+  const [generatedPostModal, setGeneratedPostModal] =
+    useState<GeneratedPostModalState | null>(null);
+  const [publicationAction, setPublicationAction] = useState<
+    "publish" | "schedule" | null
+  >(null);
   const deferredSearch = useDeferredValue(search);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setTheme((current) => buildQuickTheme(current));
+    }, randomQuickThemeDelayMs());
+
+    return () => window.clearTimeout(timeout);
+  }, [theme]);
+
+  useEffect(() => {
+    if (!notice) {
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setNotice(null);
+    }, 6000);
+
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
 
   const filteredContents = contents.filter((item) => {
     const matchesSearch =
@@ -99,6 +243,7 @@ export function DashboardOverview({
   function handleGenerate() {
     setError(null);
     setFeedback(null);
+    setNotice(null);
 
     startTransition(async () => {
       const response = await fetch("/api/contents/generate", {
@@ -117,16 +262,23 @@ export function DashboardOverview({
           audience: "Empresarios e negocios locais",
           funnelStage: "middle",
           extraContext:
-            "Layout premium, linguagem forte, foco em conversao e identidade visual da RB Site.",
+            "Nicho fixo: web design e design grafico para empresas. Direcao visual: posts editoriais premium, imagem real de empresa, escritorio, agencia criativa, notebook, equipe profissional, branding e autoridade digital. Nunca usar fotos das pessoas dos perfis de referencia. Preferir imagem profissional estilo banco de imagens/Pixabay com foco em web design, design grafico, sites, landing pages, UX, SEO e conversao.",
           mode: "live",
           fallbackToMock: false,
         }),
       });
 
-      const result = (await response.json()) as GenerateApiResponse;
+      const result = ((await response
+        .json()
+        .catch(() => null)) ?? {}) as GenerateApiResponse;
 
       if (!response.ok || !result.success || !result.data) {
         setError(result.error ?? "Nao foi possivel gerar o conteudo.");
+        setNotice({
+          tone: "error",
+          message:
+            result.error ?? "A geracao falhou e precisa de revisao nas integracoes.",
+        });
         return;
       }
 
@@ -139,16 +291,185 @@ export function DashboardOverview({
 
       setLatestCreative(result.data.creative);
       setContents((currentItems) => [result.data!.record, ...currentItems]);
+      setGeneratedPostModal({
+        creative: result.data.creative,
+        record: result.data.record,
+        format,
+        platform,
+        theme,
+      });
       setFeedback(
-        result.data.creative.meta.usedMockFallback
-          ? "Conteudo salvo, mas uma etapa ainda caiu em fallback local. Revise as integracoes antes de publicar."
-          : `Conteudo gerado em modo live via ${textProvider} + ${imageProvider} e salvo na base central do painel.`,
+        `Conteudo gerado em modo live via ${textProvider} + ${imageProvider} e salvo na base central do painel.`,
       );
+      setNotice({
+        tone: "success",
+        message:
+          "Resumo do post pronto. Revise e escolha se deseja publicar ou agendar.",
+      });
+    });
+  }
+
+  function handleCloseModal() {
+    setGeneratedPostModal(null);
+  }
+
+  function updateContentStatus(contentId: string, status: ContentStatus) {
+    setContents((currentItems) =>
+      currentItems.map((item) =>
+        item.id === contentId
+          ? {
+              ...item,
+              status,
+            }
+          : item,
+      ),
+    );
+  }
+
+  function handlePublication(mode: "publish" | "schedule") {
+    if (!generatedPostModal) {
+      return;
+    }
+
+    if (generatedPostModal.format !== "post") {
+      setNotice({
+        tone: "info",
+        message:
+          "Publicacao rapida neste popup esta disponivel para post unico. Carrosseis e reels seguem pelo planner.",
+      });
+      return;
+    }
+
+    setPublicationAction(mode);
+    setError(null);
+    setFeedback(null);
+
+    startTransition(async () => {
+      const targets = resolveTargetPlatforms(generatedPostModal.platform);
+      const scheduledFor =
+        mode === "schedule"
+          ? generatedPostModal.creative.generated.postingSuggestion.isoDateTime
+          : undefined;
+
+      const settled = await Promise.allSettled(
+        targets.map(async (targetPlatform) => {
+          const response = await fetch("/api/publishing/meta", {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              platform: targetPlatform,
+              mediaType: "image",
+              mediaUrl:
+                generatedPostModal.creative.publication_image_url ??
+                generatedPostModal.creative.image_url,
+              caption:
+                targetPlatform === "facebook"
+                  ? generatedPostModal.creative.captions.facebook
+                  : generatedPostModal.creative.captions.instagram,
+              message:
+                targetPlatform === "facebook"
+                  ? generatedPostModal.creative.captions.facebook
+                  : undefined,
+              scheduledFor,
+              allowInternalScheduling: true,
+              contentId: generatedPostModal.record.id,
+            }),
+          });
+
+          const payload = ((await response
+            .json()
+            .catch(() => null)) ?? {}) as MetaPublicationApiResponse;
+
+          if (!response.ok || !payload.success || !payload.data) {
+            throw new Error(resolveMetaErrorMessage(payload.error));
+          }
+
+          return payload.data;
+        }),
+      );
+
+      const succeeded = settled.filter(
+        (
+          result,
+        ): result is PromiseFulfilledResult<MetaPublicationResult> =>
+          result.status === "fulfilled",
+      );
+      const failed = settled.filter(
+        (result): result is PromiseRejectedResult => result.status === "rejected",
+      );
+
+      if (succeeded.length === 0) {
+        const failureMessage =
+          failed[0]?.reason instanceof Error
+            ? failed[0].reason.message
+            : "Nao foi possivel concluir a operacao na Meta.";
+
+        setError(failureMessage);
+        setNotice({
+          tone: "error",
+          message: failureMessage,
+        });
+        setPublicationAction(null);
+        return;
+      }
+
+      const successPlatforms = resolvePlatformLabel(
+        succeeded.map((entry) => entry.value.platform),
+      );
+      const nextStatus =
+        mode === "publish" ? ("published" as const) : ("scheduled" as const);
+      const successMessage =
+        mode === "publish"
+          ? `Post publicado com sucesso em ${successPlatforms}.`
+          : `Post agendado para ${formatScheduledLabel(scheduledFor)} em ${successPlatforms}.`;
+
+      updateContentStatus(generatedPostModal.record.id, nextStatus);
+      setFeedback(successMessage);
+      setNotice({
+        tone: failed.length > 0 ? "info" : "success",
+        message:
+          failed.length > 0
+            ? `${successMessage} ${failed.length} canal(is) ainda precisam de revisao.`
+            : successMessage,
+      });
+
+      if (failed.length > 0) {
+        const failedMessage = failed
+          .map((entry) =>
+            entry.reason instanceof Error
+              ? entry.reason.message
+              : "Falha inesperada em um dos canais.",
+          )
+          .join(" | ");
+        setError(failedMessage);
+      } else {
+        setError(null);
+      }
+
+      setGeneratedPostModal(null);
+      setPublicationAction(null);
     });
   }
 
   return (
     <div className="grid gap-6">
+      {notice ? (
+        <div
+          className={`fixed right-4 top-4 z-[70] max-w-md rounded-[22px] border px-4 py-4 text-sm shadow-[0_18px_60px_rgb(2_6_23_/_0.36)] backdrop-blur ${
+            notice.tone === "success"
+              ? "border-emerald-300/18 bg-emerald-400/12 text-emerald-50"
+              : notice.tone === "error"
+                ? "border-rose-300/18 bg-rose-400/12 text-rose-50"
+                : "border-sky-300/18 bg-sky-400/12 text-sky-50"
+          }`}
+        >
+          {notice.message}
+        </div>
+      ) : null}
+
       <section className="surface-card rounded-[34px] p-6 md:p-8 lg:p-9">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-[50rem]">
@@ -161,19 +482,19 @@ export function DashboardOverview({
             </h1>
             <p className="mt-5 max-w-3xl text-[15px] leading-7 text-slate-300 md:text-base md:leading-8">
               A superficie agora fica mais limpa, mais larga e pronta para operar
-              com OpenAI, Gemini, Stability, Canva e Meta com diagnostico claro
-              quando alguma integracao nao responder em producao.
+              com OpenAI, Gemini, Stability, Pixabay, Canva e Meta com diagnostico
+              claro quando alguma integracao nao responder em producao.
             </p>
 
             <div className="mt-5 flex flex-wrap gap-2">
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                Modo live obrigatorio
+                Tema rapido automatico
               </span>
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                Fallback mock desativado
+                Popup de publicar e agendar
               </span>
               <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                Planner e dashboard alinhados
+                Nicho focado em web design
               </span>
             </div>
           </div>
@@ -188,6 +509,10 @@ export function DashboardOverview({
                 onChange={(event) => setTheme(event.target.value)}
                 className="h-14 rounded-2xl border border-white/10 bg-white/5 px-4 text-white outline-none"
               />
+              <span className="text-xs leading-6 text-slate-400">
+                Atualiza sozinho a cada 1 a 2 minutos com foco em web design e
+                design grafico.
+              </span>
             </label>
 
             <div className="grid gap-3 md:grid-cols-2">
@@ -243,8 +568,8 @@ export function DashboardOverview({
             </div>
 
             <p className="text-xs leading-6 text-slate-400">
-              Se OpenAI, Gemini ou Stability falharem, o painel agora retorna o
-              erro real em vez de mascarar a operacao com conteudo mock.
+              Quando Stability estiver sem creditos, o painel tenta Pixabay e, se
+              preciso, fecha a arte com compositor interno sem travar o fluxo.
             </p>
           </div>
         </div>
@@ -421,6 +746,106 @@ export function DashboardOverview({
           </section>
         </aside>
       </section>
+
+      {generatedPostModal ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/78 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-[32px] border border-white/10 bg-[#081726] p-6 shadow-[0_24px_90px_rgb(2_6_23_/_0.48)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-amber-200">
+                  Resumo do post
+                </p>
+                <h3 className="mt-3 max-w-xl font-display text-2xl font-semibold tracking-[-0.04em] text-white">
+                  {generatedPostModal.creative.title}
+                </h3>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10"
+              >
+                Fechar popup
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-4 rounded-[24px] border border-white/10 bg-white/5 p-4 md:grid-cols-2">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                  Tema
+                </p>
+                <p className="mt-2 text-sm leading-7 text-slate-200">
+                  {generatedPostModal.theme}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                  Melhor janela sugerida
+                </p>
+                <p className="mt-2 text-sm leading-7 text-slate-200">
+                  {generatedPostModal.creative.generated.bestPostingTime}
+                </p>
+              </div>
+            </div>
+
+            <p className="mt-5 text-sm leading-7 text-slate-300">
+              {generatedPostModal.creative.content}
+            </p>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              {generatedPostModal.creative.hashtags.slice(0, 6).map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+
+            {generatedPostModal.format !== "post" ? (
+              <div className="mt-5 rounded-[22px] border border-sky-300/18 bg-sky-400/10 px-4 py-4 text-sm leading-7 text-sky-50">
+                O popup de publicar/agendar esta pronto para post unico. Para
+                carrosseis e reels, siga pelo planner para montar todos os ativos.
+              </div>
+            ) : null}
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => handlePublication("publish")}
+                disabled={publicationAction !== null || generatedPostModal.format !== "post"}
+                className="inline-flex h-12 items-center justify-center rounded-2xl bg-amber-500 px-5 text-sm font-semibold text-slate-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {publicationAction === "publish" ? "Publicando..." : "Publicar"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handlePublication("schedule")}
+                disabled={publicationAction !== null || generatedPostModal.format !== "post"}
+                className="inline-flex h-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-5 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {publicationAction === "schedule" ? "Agendando..." : "Agendar"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="inline-flex h-12 items-center justify-center rounded-2xl border border-white/10 bg-transparent px-5 text-sm font-semibold text-slate-200 transition hover:bg-white/5"
+              >
+                Fechar popup
+              </button>
+            </div>
+
+            <p className="mt-4 text-xs leading-6 text-slate-400">
+              Notificacoes do painel vao informar se o post foi publicado agora ou
+              agendado para a data sugerida.
+            </p>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
