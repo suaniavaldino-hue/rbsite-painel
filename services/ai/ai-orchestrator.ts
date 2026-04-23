@@ -42,68 +42,124 @@ function wrapText(text: string, maxChars: number) {
     lines.push(currentLine);
   }
 
-  return lines.slice(0, 4);
+  return lines.slice(0, 6);
+}
+
+function renderTextLines(input: {
+  lines: string[];
+  x: number;
+  startY: number;
+  fontSize: number;
+  lineGap: number;
+  fill: string;
+  fontWeight: number;
+  maxLines?: number;
+}) {
+  return input.lines
+    .slice(0, input.maxLines ?? input.lines.length)
+    .map((line, index) => {
+      const y = input.startY + index * (input.fontSize + input.lineGap);
+      return `<text x="${input.x}" y="${y}" fill="${input.fill}" font-size="${input.fontSize}" font-weight="${input.fontWeight}" letter-spacing="-1.2">${escapeSvg(line)}</text>`;
+    })
+    .join("");
 }
 
 function buildMockImageResult(
   request: AiOrchestratorRequest,
   generated: ContentGenerationResult["content"],
 ): ImageGenerationResult {
-  const titleLines = wrapText(generated.title, 22);
-  const subtitleLines = wrapText(generated.subtitle, 34);
-
-  const titleSvg = titleLines
-    .map((line, index) => {
-      return `<text x="96" y="${320 + index * 82}" fill="#081726" font-size="72" font-weight="800" letter-spacing="-1.8">${escapeSvg(line)}</text>`;
-    })
-    .join("");
-
-  const subtitleSvg = subtitleLines
-    .map((line, index) => {
-      return `<text x="96" y="${640 + index * 48}" fill="#3f5367" font-size="34" font-weight="500">${escapeSvg(line)}</text>`;
-    })
-    .join("");
+  const isVertical = request.format === "reel";
+  const width = 1080;
+  const height = isVertical ? 1920 : 1080;
+  const titleLines = wrapText(generated.title, isVertical ? 15 : 18);
+  const subtitleLines = wrapText(generated.subtitle, isVertical ? 22 : 28);
+  const ghostWord = wrapText(generated.hook, isVertical ? 10 : 12)
+    .slice(0, 2)
+    .join(" ")
+    .toUpperCase();
 
   const svg = `
-<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" fill="none">
   <defs>
-    <linearGradient id="bg" x1="90" y1="80" x2="1000" y2="1030" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#eef4fb"/>
+    <linearGradient id="bg" x1="60" y1="70" x2="980" y2="${height - 40}" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#091A2B"/>
+      <stop offset="0.45" stop-color="#10243A"/>
+      <stop offset="1" stop-color="#060E18"/>
     </linearGradient>
-    <linearGradient id="accent" x1="760" y1="70" x2="1020" y2="280" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FEA347"/>
-      <stop offset="1" stop-color="#FE770B"/>
+    <radialGradient id="orb1" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(${isVertical ? 810 : 850} 240) rotate(90) scale(340 340)">
+      <stop stop-color="#FE770B" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#FE770B" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="orb2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(830 ${isVertical ? 950 : 540}) rotate(90) scale(410 300)">
+      <stop stop-color="#4BC1FF" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#4BC1FF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="wave1" x1="76" y1="${height - 250}" x2="1006" y2="${height - 120}" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FE770B"/>
+      <stop offset="1" stop-color="#FFD5B1"/>
     </linearGradient>
-    <filter id="shadow" x="18" y="30" width="1044" height="1032" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feDropShadow dx="0" dy="22" stdDeviation="28" flood-color="#081726" flood-opacity="0.18"/>
-    </filter>
+    <linearGradient id="wave2" x1="52" y1="${height - 150}" x2="1018" y2="${height - 20}" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4BC1FF"/>
+      <stop offset="1" stop-color="#B6F1FF"/>
+    </linearGradient>
   </defs>
 
-  <rect width="1080" height="1080" fill="#f4f7fb"/>
-  <circle cx="940" cy="120" r="210" fill="#FE770B" opacity="0.16"/>
-  <circle cx="100" cy="1020" r="240" fill="#081726" opacity="0.08"/>
-  <g filter="url(#shadow)">
-    <rect x="48" y="50" width="984" height="980" rx="40" fill="url(#bg)"/>
-  </g>
-  <path d="M78 142C320 26 602 28 972 132V214C688 154 438 168 78 290V142Z" fill="url(#accent)"/>
-  <text x="96" y="230" fill="#6a7c8f" font-size="24" font-weight="700" letter-spacing="6">RB SITE SOCIAL AUTOMATION</text>
-  ${titleSvg}
-  ${subtitleSvg}
-  <rect x="96" y="794" width="396" height="132" rx="28" fill="#081726"/>
-  <text x="132" y="842" fill="#f8fafc" font-size="21" font-weight="700" letter-spacing="3">MELHOR HORARIO</text>
-  <text x="132" y="886" fill="#FEA347" font-size="35" font-weight="800">${escapeSvg(generated.bestPostingTime.toUpperCase())}</text>
-  <rect x="544" y="794" width="418" height="132" rx="28" fill="#081726" opacity="0.08" stroke="#081726" stroke-opacity="0.16"/>
-  <text x="580" y="842" fill="#4b5f74" font-size="21" font-weight="700" letter-spacing="3">CTA</text>
-  <text x="580" y="886" fill="#081726" font-size="33" font-weight="800">${escapeSvg(request.cta.slice(0, 28).toUpperCase())}</text>
-  <text x="96" y="972" fill="#4b5f74" font-size="22" font-weight="600">rbsite.com.br</text>
-  <text x="958" y="972" text-anchor="end" fill="#081726" font-size="20" font-weight="700">conteudo premium com IA</text>
+  <rect width="${width}" height="${height}" fill="url(#bg)"/>
+  <circle cx="${isVertical ? 860 : 910}" cy="220" r="260" fill="url(#orb1)" opacity="0.26"/>
+  <circle cx="820" cy="${isVertical ? 980 : 560}" r="300" fill="url(#orb2)" opacity="0.34"/>
+  <circle cx="${isVertical ? 830 : 820}" cy="${isVertical ? 760 : 500}" r="${isVertical ? 250 : 220}" fill="#0F172A" opacity="0.92" stroke="#F8FAFC" stroke-opacity="0.08" stroke-width="3"/>
+  <circle cx="${isVertical ? 830 : 820}" cy="${isVertical ? 760 : 500}" r="${isVertical ? 184 : 164}" fill="#15283D" opacity="0.94"/>
+  <circle cx="${isVertical ? 830 : 820}" cy="${isVertical ? 760 : 500}" r="${isVertical ? 114 : 98}" fill="#FE770B" opacity="0.96"/>
+  <circle cx="${isVertical ? 830 : 820}" cy="${isVertical ? 760 : 500}" r="${isVertical ? 52 : 42}" fill="#F8FAFC" opacity="0.94"/>
+
+  <text x="80" y="110" fill="#F8FAFC" font-size="24" font-weight="700" letter-spacing="7">RB SITE SOCIAL AUTOMATION</text>
+  <rect x="${width - 220}" y="70" width="140" height="48" rx="24" fill="#FE770B"/>
+  <text x="${width - 150}" y="101" text-anchor="middle" fill="#081726" font-size="18" font-weight="800" letter-spacing="2.4">${request.format.toUpperCase()}</text>
+
+  <text x="70" y="${isVertical ? 240 : 228}" fill="#FFFFFF" fill-opacity="0.08" font-size="${isVertical ? 176 : 206}" font-weight="900" letter-spacing="-6">${escapeSvg(ghostWord)}</text>
+
+  ${renderTextLines({
+    lines: titleLines,
+    x: 82,
+    startY: isVertical ? 370 : 305,
+    fontSize: isVertical ? 102 : 88,
+    lineGap: isVertical ? 8 : 6,
+    fill: "#FFFFFF",
+    fontWeight: 800,
+    maxLines: isVertical ? 4 : 3,
+  })}
+
+  <rect x="82" y="${isVertical ? 760 : 610}" width="${isVertical ? 360 : 300}" height="14" rx="7" fill="#FE770B"/>
+  ${renderTextLines({
+    lines: subtitleLines,
+    x: 82,
+    startY: isVertical ? 860 : 695,
+    fontSize: isVertical ? 38 : 32,
+    lineGap: 12,
+    fill: "#E2E8F0",
+    fontWeight: 500,
+    maxLines: isVertical ? 5 : 4,
+  })}
+
+  <path d="M70 ${height - 195}C240 ${height - 255} 410 ${height - 120} 990 ${height - 220}" stroke="url(#wave1)" stroke-width="14" stroke-linecap="round" opacity="0.96"/>
+  <path d="M58 ${height - 125}C265 ${height - 220} 488 ${height - 20} 1010 ${height - 120}" stroke="url(#wave2)" stroke-width="8" stroke-linecap="round" opacity="0.72"/>
+
+  <rect x="82" y="${height - 255}" width="${isVertical ? 420 : 390}" height="94" rx="28" fill="#FE770B"/>
+  <text x="120" y="${height - 217}" fill="#081726" font-size="20" font-weight="700" letter-spacing="2.8">CTA</text>
+  <text x="120" y="${height - 185}" fill="#081726" font-size="34" font-weight="900" letter-spacing="-0.8">${escapeSvg(request.cta.slice(0, isVertical ? 20 : 24).toUpperCase())}</text>
+
+  <rect x="${width - (isVertical ? 440 : 400)}" y="${height - 245}" width="${isVertical ? 360 : 320}" height="94" rx="28" fill="#081726" fill-opacity="0.82" stroke="#FFFFFF" stroke-opacity="0.14"/>
+  <text x="${width - (isVertical ? 404 : 364)}" y="${height - 207}" fill="#FFFFFF" font-size="20" font-weight="700" letter-spacing="2.8">MELHOR JANELA</text>
+  <text x="${width - (isVertical ? 404 : 364)}" y="${height - 175}" fill="#FEA347" font-size="30" font-weight="900" letter-spacing="-0.8">${escapeSvg(generated.bestPostingTime.toUpperCase())}</text>
+
+  <text x="82" y="${height - 108}" fill="#F8FAFC" font-size="24" font-weight="700">rbsite.com.br</text>
+  <text x="${width - 82}" y="${height - 108}" text-anchor="end" fill="#F8FAFC" font-size="22" font-weight="600">contato@rbsite.com.br</text>
 </svg>`.trim();
 
   return {
     imageUrl: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
     provider: "mock",
-    model: "rbsite-branded-svg",
+    model: "rbsite-premium-poster-svg",
   };
 }
 
