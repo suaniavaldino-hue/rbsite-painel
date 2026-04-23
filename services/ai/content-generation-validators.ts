@@ -26,22 +26,187 @@ function ensureString(value: unknown, field: string) {
   return value.trim();
 }
 
+function readString(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : undefined;
+}
+
+function readNestedRecord(value: unknown) {
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function firstString(...values: unknown[]) {
+  for (const value of values) {
+    const normalizedValue = readString(value);
+
+    if (normalizedValue) {
+      return normalizedValue;
+    }
+  }
+
+  return undefined;
+}
+
+function buildFallbackCaption(input: {
+  title: string;
+  subtitle: string;
+  hook: string;
+  cta: string;
+  platform: "instagram" | "facebook";
+}) {
+  if (input.platform === "instagram") {
+    return [
+      input.hook,
+      "",
+      input.subtitle,
+      "",
+      input.cta,
+    ].join("\n");
+  }
+
+  return [
+    input.title,
+    "",
+    input.subtitle,
+    "",
+    "Uma presenca digital forte precisa unir estrategia, performance e clareza comercial. A RB Site ajuda negocios a transformar site, SEO e landing pages em ativos reais de conversao.",
+    "",
+    input.cta,
+  ].join("\n");
+}
+
+function normalizeCaptionSet(input: {
+  data: Record<string, unknown>;
+  captions?: Record<string, unknown>;
+  request: ContentGenerationRequest;
+  title: string;
+  subtitle: string;
+  hook: string;
+}) {
+  const instagram = firstString(
+    input.captions?.instagram,
+    input.captions?.ig,
+    input.data.instagramCaption,
+    input.data.captionInstagram,
+    input.data.legendaInstagram,
+    input.data.legenda_instagram,
+    input.data.caption,
+  );
+  const facebook = firstString(
+    input.captions?.facebook,
+    input.captions?.fb,
+    input.data.facebookCaption,
+    input.data.captionFacebook,
+    input.data.legendaFacebook,
+    input.data.legenda_facebook,
+    input.data.caption,
+  );
+
+  return {
+    instagram:
+      instagram ??
+      buildFallbackCaption({
+        title: input.title,
+        subtitle: input.subtitle,
+        hook: input.hook,
+        cta: input.request.cta,
+        platform: "instagram",
+      }),
+    facebook:
+      facebook ??
+      buildFallbackCaption({
+        title: input.title,
+        subtitle: input.subtitle,
+        hook: input.hook,
+        cta: input.request.cta,
+        platform: "facebook",
+      }),
+  };
+}
+
+function normalizeHashtagValue(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.map((item) => readString(item)).filter(Boolean) as string[];
+  }
+
+  const stringValue = readString(value);
+
+  if (!stringValue) {
+    return [];
+  }
+
+  const matches = stringValue.match(/#[\p{L}\p{N}_]+/gu);
+
+  if (matches?.length) {
+    return matches;
+  }
+
+  return stringValue
+    .split(/[,;\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => (item.startsWith("#") ? item : `#${item.replace(/^#+/, "")}`));
+}
+
+function normalizeFallbackHashtags(platform: "instagram" | "facebook") {
+  const base = [
+    "#rbsite",
+    "#siteprofissional",
+    "#criacaodesites",
+    "#landingpage",
+    "#seo",
+    "#presencadigital",
+    "#marketingdigital",
+    "#conversaodigital",
+  ];
+
+  return platform === "instagram" ? base : base.slice(0, 6);
+}
+
 function ensureStringArray(value: unknown, field: string, maxLength: number) {
-  if (!Array.isArray(value) || value.length === 0) {
+  const normalizedItems = normalizeHashtagValue(value);
+
+  if (normalizedItems.length === 0) {
     throw new ContentGenerationServiceError(
       `Generated content field "${field}" must be a non-empty array.`,
     );
   }
 
-  if (value.length > maxLength) {
-    throw new ContentGenerationServiceError(
-      `Generated content field "${field}" exceeds the limit of ${maxLength} items.`,
-    );
-  }
-
-  return value.map((item, index) =>
+  return normalizedItems.slice(0, maxLength).map((item, index) =>
     ensureString(item, `${field}[${index}]`),
   );
+}
+
+function normalizeHashtagSet(input: {
+  data: Record<string, unknown>;
+  hashtags?: Record<string, unknown>;
+}) {
+  const instagram = normalizeHashtagValue(
+    input.hashtags?.instagram ??
+      input.hashtags?.ig ??
+      input.data.instagramHashtags ??
+      input.data.hashtagsInstagram ??
+      input.data.hashtags_instagram ??
+      input.data.hashtags,
+  ).slice(0, 15);
+  const facebook = normalizeHashtagValue(
+    input.hashtags?.facebook ??
+      input.hashtags?.fb ??
+      input.data.facebookHashtags ??
+      input.data.hashtagsFacebook ??
+      input.data.hashtags_facebook ??
+      input.data.hashtags,
+  ).slice(0, 8);
+
+  return {
+    instagram:
+      instagram.length > 0 ? instagram : normalizeFallbackHashtags("instagram"),
+    facebook:
+      facebook.length > 0 ? facebook : normalizeFallbackHashtags("facebook"),
+  };
 }
 
 export function normalizeGeneratedDocument(
@@ -55,10 +220,9 @@ export function normalizeGeneratedDocument(
   }
 
   const data = payload as Record<string, unknown>;
-  const captions = data.captions as Record<string, unknown> | undefined;
-  const hashtags = data.hashtags as Record<string, unknown> | undefined;
-  const postingSuggestionInput =
-    data.postingSuggestion as Record<string, unknown> | undefined;
+  const captions = readNestedRecord(data.captions);
+  const hashtags = readNestedRecord(data.hashtags);
+  const postingSuggestionInput = readNestedRecord(data.postingSuggestion);
 
   let postingSuggestion: PostingSuggestion;
 
@@ -85,10 +249,23 @@ export function normalizeGeneratedDocument(
     postingSuggestion = buildPostingSuggestion(request);
   }
 
+  const title = ensureString(data.title, "title");
+  const subtitle = ensureString(data.subtitle, "subtitle");
+  const hook = ensureString(data.hook, "hook");
+  const captionSet = normalizeCaptionSet({
+    data,
+    captions,
+    request,
+    title,
+    subtitle,
+    hook,
+  });
+  const hashtagSet = normalizeHashtagSet({ data, hashtags });
+
   const normalized: GeneratedContentDocument = {
-    title: ensureString(data.title, "title"),
-    subtitle: ensureString(data.subtitle, "subtitle"),
-    hook: ensureString(data.hook, "hook"),
+    title,
+    subtitle,
+    hook,
     artText: ensureString(data.artText, "artText"),
     visualIdea: ensureString(data.visualIdea, "visualIdea"),
     bestPostingTime:
@@ -96,16 +273,16 @@ export function normalizeGeneratedDocument(
       formatPostingSuggestionLabel(postingSuggestion),
     postingSuggestion,
     captions: {
-      instagram: ensureString(captions?.instagram, "captions.instagram"),
-      facebook: ensureString(captions?.facebook, "captions.facebook"),
+      instagram: ensureString(captionSet.instagram, "captions.instagram"),
+      facebook: ensureString(captionSet.facebook, "captions.facebook"),
     },
     hashtags: {
       instagram: ensureStringArray(
-        hashtags?.instagram,
+        hashtagSet.instagram,
         "hashtags.instagram",
         15,
       ),
-      facebook: ensureStringArray(hashtags?.facebook, "hashtags.facebook", 8),
+      facebook: ensureStringArray(hashtagSet.facebook, "hashtags.facebook", 8),
     },
   };
 
