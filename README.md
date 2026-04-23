@@ -7,7 +7,7 @@ Painel premium da RB Site para gerar conteudo com IA, organizar biblioteca edito
 O repositorio foi consolidado para usar o app Next.js na raiz como fonte de verdade do produto. Nesta iteracao, a base foi refatorada para:
 
 - limpar duplicacoes e residuos legados do workspace
-- criar um repositório central de conteudos
+- criar um repositorio central de conteudos
 - conectar persistencia via Supabase com fallback local de desenvolvimento
 - introduzir um sistema multi-IA com OpenAI, Gemini, Stability AI e Canva Connect
 - refazer o dashboard sobre a nova camada central de dados
@@ -57,7 +57,7 @@ types/
 
 Arquivo central:
 
-- [services/database/content-repository.ts](</C:/Users/bruce/OneDrive/Desktop/PROJETOS/rb site/Sistema SM/services/database/content-repository.ts>)
+- `services/database/content-repository.ts`
 
 Funcoes expostas:
 
@@ -75,11 +75,11 @@ Fluxo:
 
 Arquivos:
 
-- [services/ai/openai.service.ts](</C:/Users/bruce/OneDrive/Desktop/PROJETOS/rb site/Sistema SM/services/ai/openai.service.ts>)
-- [services/ai/gemini.service.ts](</C:/Users/bruce/OneDrive/Desktop/PROJETOS/rb site/Sistema SM/services/ai/gemini.service.ts>)
-- [services/ai/stability.service.ts](</C:/Users/bruce/OneDrive/Desktop/PROJETOS/rb site/Sistema SM/services/ai/stability.service.ts>)
-- [services/ai/canva.service.ts](</C:/Users/bruce/OneDrive/Desktop/PROJETOS/rb site/Sistema SM/services/ai/canva.service.ts>)
-- [services/ai/ai-orchestrator.ts](</C:/Users/bruce/OneDrive/Desktop/PROJETOS/rb site/Sistema SM/services/ai/ai-orchestrator.ts>)
+- `services/ai/openai.service.ts`
+- `services/ai/gemini.service.ts`
+- `services/ai/stability.service.ts`
+- `services/ai/canva.service.ts`
+- `services/ai/ai-orchestrator.ts`
 
 Responsabilidades:
 
@@ -105,13 +105,13 @@ Payload central:
 
 Arquivo:
 
-- [actions/contents/generate-content.ts](</C:/Users/bruce/OneDrive/Desktop/PROJETOS/rb site/Sistema SM/actions/contents/generate-content.ts>)
+- `actions/contents/generate-content.ts`
 
 Fluxo:
 
 1. valida o input
 2. chama o orquestrador multi-IA
-3. salva no repositório central
+3. salva no repositorio central
 4. devolve o payload estruturado + registro persistido
 
 ## Dashboard
@@ -128,8 +128,8 @@ O dashboard foi reconstruido para usar a camada central de dados e agora inclui:
 
 Arquivos principais:
 
-- [app/(dashboard)/dashboard/page.tsx](</C:/Users/bruce/OneDrive/Desktop/PROJETOS/rb site/Sistema SM/app/(dashboard)/dashboard/page.tsx>)
-- [components/dashboard/dashboard-overview.tsx](</C:/Users/bruce/OneDrive/Desktop/PROJETOS/rb site/Sistema SM/components/dashboard/dashboard-overview.tsx>)
+- `app/(dashboard)/dashboard/page.tsx`
+- `components/dashboard/dashboard-overview.tsx`
 
 ## Rotas principais
 
@@ -212,7 +212,9 @@ OPENAI_REASONING_EFFORT=
 OPENAI_TEXT_VERBOSITY=
 
 GEMINI_API_KEY=
-GEMINI_MODEL=
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_FALLBACK_MODELS=gemini-2.5-flash-lite
+GEMINI_MAX_RETRIES=2
 
 STABILITY_API_KEY=
 STABILITY_IMAGE_MODEL=
@@ -271,9 +273,9 @@ Checklist:
 
 Arquivos de deploy existentes:
 
-- [docs/deploy-producao-painel-rbsite.md](</C:/Users/bruce/OneDrive/Desktop/PROJETOS/rb site/Sistema SM/docs/deploy-producao-painel-rbsite.md>)
-- [deploy/nginx/painel.rbsite.com.br.conf](</C:/Users/bruce/OneDrive/Desktop/PROJETOS/rb site/Sistema SM/deploy/nginx/painel.rbsite.com.br.conf>)
-- [deploy/systemd/rbsite-social-automation.service](</C:/Users/bruce/OneDrive/Desktop/PROJETOS/rb site/Sistema SM/deploy/systemd/rbsite-social-automation.service>)
+- `docs/deploy-producao-painel-rbsite.md`
+- `deploy/nginx/painel.rbsite.com.br.conf`
+- `deploy/systemd/rbsite-social-automation.service`
 
 ## Seguranca
 
