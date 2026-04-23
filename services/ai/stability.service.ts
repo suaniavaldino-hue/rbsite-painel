@@ -26,13 +26,13 @@ function buildBackgroundPrompt(input: ImageGenerationInput) {
 
   return [
     "Create one premium social media campaign background for RB Site.",
-    "This must look like a polished paid social ad, not a website, not a landing page, not a dashboard, not an app screen.",
-    "Use a single strong hero scene with cinematic editorial lighting, premium contrast, clean depth and luxury commercial finish.",
-    "Prefer confident entrepreneur portrait, premium office lifestyle scene, or symbolic growth object with abstract motion and light trails.",
-    "If the concept relates to websites, SEO, performance or conversion, represent it symbolically and visually, never with literal UI screens or website mockups.",
-    "No smartphone screens, no laptops showing interface, no tablets, no app cards, no browser windows, no wireframes, no software dashboards.",
-    "No readable text, no letters, no logos, no typography, no watermarks in the generated background.",
-    "Deep navy and near-black base, elegant orange accents, subtle cyan glow only if needed, clean negative space on the left side for headline overlay.",
+    "This must look like a polished paid social ad, not a website, not a landing page, not a dashboard, not an app screen, not a software mockup.",
+    "Use a single strong hero scene with cinematic editorial lighting, premium contrast, clean depth and high-end commercial finish.",
+    "Prefer one of these directions: confident entrepreneur portrait in premium office lighting, abstract geometric growth scene, luxury brand object composition, or symbolic performance/conversion visual.",
+    "Never show smartphone screens, tablets, laptop interfaces, browser windows, app cards, website cards, UI tiles, dashboards or software panels.",
+    "Never show text-like symbols, fake logos, pseudo brand marks, pseudo letters or typographic shapes inside the generated image.",
+    "Background should be atmospheric and clean, designed only to support overlay typography that will be added later by the system.",
+    "Deep navy and near-black base, elegant orange highlights, subtle cyan light trail only if needed, clean left-side negative space.",
     orientation + ".",
     `Theme: ${input.request.theme}.`,
     `Objective: ${input.request.objective}.`,
@@ -52,15 +52,20 @@ function buildNegativePrompt() {
     "browser chrome",
     "smartphone screen",
     "tablet interface",
-    "laptop with UI",
+    "laptop with ui",
     "software mockup",
     "wireframe",
     "cards with text",
+    "tiles",
+    "widgets",
+    "app cards",
     "readable text",
     "letters",
     "gibberish typography",
     "watermark",
     "logo",
+    "pseudo logo",
+    "fake brand mark",
     "collage",
     "template grid",
     "split screen",
@@ -151,7 +156,7 @@ export class StabilityImageService {
           );
           formData.append(
             "negative_prompt",
-            "website screenshot, app ui, dashboard, smartphone screen, text, watermark",
+            "website screenshot, app ui, dashboard, smartphone screen, text, watermark, logo",
           );
           formData.append("aspect_ratio", "1:1");
           formData.append("output_format", "png");
